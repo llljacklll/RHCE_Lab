@@ -1,5 +1,36 @@
 # 🚀 RHCE Lab — Simulador del examen EX294 (Red Hat Certified Engineer)
 
+## Prerrequisitos del host
+
+El lab corre sobre **Docker Engine + plugin compose v2** en un host Linux x86_64.
+Dos escenarios soportados:
+
+- **WSL2 (portatil de desarrollo)**: Docker Desktop para Windows con la
+  integracion WSL activada. El kernel de WSL2 no trae nf_tables, por eso
+  firewalld dentro de los contenedores va siempre en modo offline (restriccion R1).
+- **MV Rocky/Alma 10 (escenario de examen)**: Docker Engine nativo (no Desktop).
+  Un solo comando deja la MV lista (idempotente, re-lanzable):
+
+        sudo bash scripts/vm_bootstrap.sh
+
+  Detecta la familia EL (Rocky/Alma/RHEL 9-10), escribe el repo oficial de
+  Docker CE, instala engine + compose plugin, habilita docker.service y
+  verifica /dev/loop-control, cgroup v2 y SELinux.
+
+Checklist del host:
+
+| Requisito | Verificacion |
+|---|---|
+| Docker Engine 24+ | docker version |
+| Compose v2 (plugin) | docker compose version |
+| /dev/loop-control (LVM fake) | ls /dev/loop-control |
+| cgroup v2 | stat -fc %T /sys/fs/cgroup -> cgroup2fs |
+| git con PAT (scope repo) | git ls-remote origin HEAD |
+
+> En la MV se trabaja como root y SELinux puede quedar Enforcing: los
+> contenedores del lab son privileged, no hace falta tocarlo.
+
+
 Simulador completo del examen de certificación **RHCE (EX294)** basado en
 **Ansible Automation**, ejecutado 100% sobre contenedores Docker para ofrecer
 un entorno aislado, reproducible y sin riesgo para tu máquina.
