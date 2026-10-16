@@ -1,0 +1,34 @@
+# ============================================================
+#  EXAMEN 001 (DIFICULTAD: EASY)
+#  Título: "Apache Básico y Usuarios"
+# ------------------------------------------------------------
+#  Formato del fichero:
+#   - tasks  → lo que ve el alumno en pantalla
+#   - checks → lo que ejecuta el motor de corrección
+#              (type → core/checkers/check_<type>.sh)
+# ============================================================
+
+---
+id: exam_001
+difficulty: easy
+title: "Apache Básico y Usuarios"
+time_limit: 15
+
+tasks:
+  - id: task_1
+    description: "Instalar el servidor web httpd en todos los nodos"
+  - id: task_2
+    description: "Crear el usuario 'webadmin' en todos los nodos"
+  - id: task_3
+    description: "Habilitar y arrancar el servicio httpd"
+
+checks:
+  - task_id: task_1
+    type: package
+    name: httpd
+  - task_id: task_2
+    type: user
+    name: webadmin
+  - task_id: task_3
+    type: service
+    name: httpd

@@ -1,0 +1,6 @@
+# Normalización de finales de línea en todo el repo
+* text=auto
+*.sh  text eol=lf
+*.yml text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf

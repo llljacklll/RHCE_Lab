@@ -1,0 +1,19 @@
+{# =============================================== #}
+{#  ROLE: role_webserver — Página principal         #}
+{#  Usa 'owner' e 'http_port' (defaults u override) #}
+{# =============================================== #}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <title>Servidor de {{ owner }}</title>
+  </head>
+  <body style="font-family: monospace; text-align: center; margin-top: 4rem;">
+    <h1>&#128640; Servidor orquestado por Ansible</h1>
+    <p>Propietario del despliegue: <strong>{{ owner }}</strong></p>
+    <p>Puerto de escucha: <strong>{{ http_port }}</strong></p>
+    <p>Nodo: <strong>{{ ansible_hostname }}</strong></p>
+    <hr>
+    <small>Desplegado por role_webserver &middot; RHCE Lab</small>
+  </body>
+</html>

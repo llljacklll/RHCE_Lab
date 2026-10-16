@@ -1,0 +1,20 @@
+# ==========================================
+# Examen Hard (Simulacro EX294)
+# ==========================================
+---
+id: exam_003
+difficulty: hard
+title: "EX294 Simulacro (LVM, V
+time_limit: 45
+tasks:
+  - id: task_1; description: "Crear VG 'vg_exam' en /dev/loop0"
+  - id: task_2; description: "Crear LV 'lv_datos' de 500MB y formatear XFS"
+  - id: task_3; description: "Crear /opt/app/con
+  - id: task_4; description: "Crear usuarios 'web01'' y 'web02' con bucle"
+  - id: task_5; description: "Programar cron para root 'logger ExamenRHCE' cada 5 min"
+checks:
+  - task_id: task_1; type: lvm; name: /dev/vg_exam
+  - task_id: t
+  - task_id: task_3; type: file; path: /opt/app/config.txt; contains: "SecretPassword123"
+  - task_id: task_4; type: user; name: web01
+  - task_id: task_5; type: cron; name: "logger ExamenRHCE"; path: root

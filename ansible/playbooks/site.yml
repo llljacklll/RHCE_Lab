@@ -1,0 +1,44 @@
+# ============================================================
+#  PLAYBOOK BASE DE DESPLIEGUE (smoke test del laboratorio)
+# ------------------------------------------------------------
+#  Lo ejecuta automáticamente './lab.sh test' (Fase 4) y sirve
+#  como ejemplo canónico del flujo RHEL:
+#     paquete → servicio → contenido → firewall
+#
+#  NOTA FIREWALLD:
+#    Se usa 'offline: true' porque los contenedores Docker no
+#    levantan el demonio de firewalld. En modo offline el módulo
+#    edita la configuración permanente (XML) directamente, sin
+#    tocar el runtime. Funciona igual en WSL2 y en VM Rocky.
+#    → NO TOCAR.
+# ============================================================
+
+---
+- name: "Primer Despliegue RHCE - Apache + Firewall"
+  hosts: nodes                     # node1, node2, node3
+  become: true                     # ejecutar como root
+
+  tasks:
+
+    - name: "1. Instalar Apache (httpd)"
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+
+    - name: "2. Habilitar y arrancar httpd"
+      ansible.builtin.service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: "3. Crear página web personalizada"
+      ansible.builtin.copy:
+        content: "<h1>Servidor orquestado por Ansible en {{ ansible_hostname }}</h1>"
+        dest: /var/www/html/index.html
+
+    - name: "4. Abrir puerto 80 en Firewalld (modo offline)"
+      ansible.posix.firewalld:
+        service: http
+        permanent: true            # se escribe en el XML persistente
+        state: enabled
+        offline: true              # sin demonio (ver cabecera)

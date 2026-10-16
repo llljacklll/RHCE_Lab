@@ -1,0 +1,31 @@
+# ========================
+# Banco de Tareas (Aleatorio)
+# ============
+---
+tasks:
+  - id: rand_pkg_httpd
+    description: "Instalar el servidor web httpd"
+    checks:
+      - type: package
+        name: httpd
+  - id: rand_svc_httpd
+    description: "Habilitar y arrancar el servicio httpd"
+    checks:
+      - type: service
+        name: httpd
+  - id: rand_user_deploy
+    description: "Crear el usuario 'deployer'"
+    checks:
+      - type: user
+        name: deployer
+  - id: hard_lvm_vg
+    description: "Crear un Volume Group 'vg_data' en /dev/loop0"
+    checks:
+      - type: lvm
+        name: /dev/vg_data
+  - id: hard_cron
+    description: "Programar cron para ansible que ejecute '/usr/bin/echo backup'"
+    checks:
+      - type: cron
+        name: "/usr/bin/echo backup"
+        path: ansible

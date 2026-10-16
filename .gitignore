@@ -1,0 +1,30 @@
+# ============================================================
+#  RHCE LAB — .gitignore
+# ------------------------------------------------------------
+#  Regla de oro: al repositorio SOLO sube lo que un alumno
+#  necesita tras hacer 'git clone'. El estado de sesión, los
+#  logs y los secretos en claro, fuera.
+# ============================================================
+
+# --- Estado del laboratorio (se regenera solo) --------------
+state/current_exam.yml
+state/exam_status.yml
+state/timer.pid
+
+# --- Logs de corrección (histórico local) --------------------
+#  Se ignora el contenido PERO se conserva .gitkeep para que
+#  la carpeta exista tras el clone.
+state/results/*
+!state/results/.gitkeep
+
+# --- Vault: jamás subir la contraseña en claro ---------------
+ansible/files/.vault_pass
+
+# --- Python ---------------------------------------------------
+__pycache__/
+*.pyc
+
+# --- OS / editores --------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp

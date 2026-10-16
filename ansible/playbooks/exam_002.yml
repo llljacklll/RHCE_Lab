@@ -1,0 +1,31 @@
+# ============================================================
+#  SOLUCIÓN DE REFERENCIA — EXAMEN 002 (DIFICULTAD: MEDIUM)
+#  Título: "Roles, Variables y Jinja2"
+# ------------------------------------------------------------
+#  CONCEPTOS QUE DEMUESTRA:
+#    1. Invocación de un ROL desde un playbook.
+#    2. Sobrescritura de los 'defaults' del rol con 'vars'.
+#    3. Plantillas Jinja2 desplegadas por el rol.
+#
+#  JERARQUÍA DE PRECEDENCIA (gana el más alto):
+#      playbook 'vars'  >  role 'defaults'
+#
+#  EJECUCIÓN:      ./lab.sh run exam_002.yml
+#  CORRECCIÓN:     ./lab.sh grade
+# ============================================================
+
+---
+- name: "EXAM 002 :: Aplicar role_webserver con overrides (8080 / Victor)"
+  hosts: nodes
+  become: true
+
+  # --------------------------------------------------------
+  # Variables de invocación: pisan los valores por defecto
+  # definidos en roles/role_webserver/defaults/main.yml
+  # --------------------------------------------------------
+  vars:
+    http_port: 8080                # Default del rol: 80    → forzamos 8080
+    owner: "Victor"                # Default del rol: Admin → forzamos Victor
+
+  roles:
+    - role_webserver               # Resuelto vía ANSIBLE_ROLES_PATH=/opt/ansible/roles

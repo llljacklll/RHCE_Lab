@@ -1,0 +1,7 @@
+{# ========================================================= #}
+{#  ROLE: role_webserver — Puerto de escucha de Apache        #}
+{#  Se genera en /etc/httpd/conf.d/ports.conf                 #}
+{#  (No tocamos httpd.conf: mejor un drop-in en conf.d/)      #}
+{# ========================================================= #}
+# {{ ansible_managed }}
+Listen {{ http_port }}

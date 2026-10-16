@@ -1,0 +1,13 @@
+# ============================================================
+#  ROLE: role_webserver — HANDLERS
+# ------------------------------------------------------------
+#  Se ejecutan UNA sola vez al final del play y SOLO si alguna
+#  tarea con 'notify' reportó un cambio de estado.
+#  El nombre debe coincidir EXACTO con el del 'notify'.
+# ============================================================
+
+---
+- name: "reiniciar httpd"
+  ansible.builtin.service:
+    name: httpd
+    state: restarted

@@ -1,0 +1,10 @@
+[Unit]
+Description=Create fake block devices for LVM labs
+After=local-fs.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/setup-disks.sh
+ExecStartPost=/bin/sleep 2
+[Install]
+WantedBy=multi-user.target

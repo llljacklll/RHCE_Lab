@@ -1,0 +1,53 @@
+# ============================================================
+#  SOLUCIÓN DE REFERENCIA — EXAMEN 001 (DIFICULTAD: EASY)
+#  Título: "Apache Básico y Usuarios"
+# ------------------------------------------------------------
+#  TAREAS QUE RESUELVE:
+#    task_1 → Instalar el paquete 'httpd' en los 3 nodos
+#    task_2 → Crear el usuario 'webadmin' (shell /bin/bash)
+#    task_3 → Habilitar y arrancar el servicio 'httpd'
+#
+#  EJECUCIÓN:      ./lab.sh run exam_001.yml
+#  CORRECCIÓN:     ./lab.sh grade
+#
+#  NOTA PEDAGÓGICA:
+#    En el EX294 real no hay soluciones de referencia: el alumno
+#    lo escribe todo desde cero. Este fichero es la implementación
+#    "modelo" para comparar y aprender patrones idempotentes.
+# ============================================================
+
+---
+- name: "EXAM 001 :: Apache Básico y Usuarios (solución de referencia)"
+  hosts: nodes                     # Grupo [nodes] → node1, node2, node3
+  become: true                     # Escalado a root (sudo) en los nodos
+
+  tasks:
+
+    # --------------------------------------------------------
+    # task_1 :: Instalación del servidor web Apache
+    # El checker validará:  rpm -q httpd
+    # --------------------------------------------------------
+    - name: "task_1 | Instalar el servidor web httpd"
+      ansible.builtin.dnf:         # Gestor nativo de RHEL/Rocky/Alma
+        name: httpd                # Nombre exacto del RPM
+        state: present             # Idempotente: instala solo si falta
+
+    # --------------------------------------------------------
+    # task_2 :: Creación del usuario 'webadmin'
+    # El checker validará:  id -u webadmin
+    # --------------------------------------------------------
+    - name: "task_2 | Crear el usuario webadmin con shell bash"
+      ansible.builtin.user:
+        name: webadmin             # Usuario exigido por el enunciado
+        shell: /bin/bash           # Shell por defecto según el examen
+        state: present             # Idempotente: crea solo si no existe
+
+    # --------------------------------------------------------
+    # task_3 :: Habilitar y arrancar httpd (systemd)
+    # El checker validará:  systemctl is-active httpd
+    # --------------------------------------------------------
+    - name: "task_3 | Habilitar (arranque) y arrancar (ahora) httpd"
+      ansible.builtin.service:
+        name: httpd
+        state: started             # systemctl start httpd
+        enabled: true              # systemctl enable httpd

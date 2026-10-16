@@ -1,0 +1,19 @@
+# ============================================================
+#  ROLE: role_webserver — VALORES POR DEFECTO
+# ------------------------------------------------------------
+#  'defaults' tiene la MÍNIMA precedencia de todo Ansible:
+#  cualquier playbook puede sobrescribirlas declarándolas en
+#  su propio bloque 'vars'.
+#
+#  Ejemplo real (playbooks/exam_002.yml):
+#      vars:
+#        http_port: 8080     # ← gana sobre este fichero
+#        owner: "Victor"     # ← gana sobre este fichero
+# ============================================================
+
+---
+# Puerto HTTP donde escuchará Apache (desplegado en ports.conf)
+http_port: 80
+
+# Propietario que se muestra en la web (usado por index.html.j2)
+owner: "Admin"

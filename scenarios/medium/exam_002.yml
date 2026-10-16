@@ -1,0 +1,14 @@
+# ==========================================
+# Examen Medio
+# ==========================================
+---
+id: exam_002
+difficulty: medium
+title: "Roles y Jinja2"
+time_limit: 30
+tasks:
+  - id: task_1; description: "Usar role 'role_webserver' con puerto 8080 y owner 'Victor'"
+  - id: task_2; description: "Crear index.html que contenga 'Victor'"
+checks:
+  - task_id: task_1; type: package; name: httpd
+  - task_id: task_2; type: file; path: /var/www/html/index.html; conta

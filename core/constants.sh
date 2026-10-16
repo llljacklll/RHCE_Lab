@@ -1,0 +1,16 @@
+#!/bin/bash
+readonly PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly DOCKER_DIR="$PROJECT_DIR/docker"
+readonly ANSIBLE_DIR="$PROJECT_DIR/ansible"
+readonly SCENARIOS_DIR="$PROJECT_DIR/scenarios"
+readonly STATE_DIR="$PROJECT_DIR/state"
+readonly INVENTORY_DIR="$ANSIBLE_DIR/inventory"
+readonly PLAYBOOKS_DIR="$ANSIBLE_DIR/playbooks"
+readonly CHECKERS_DIR="$PROJECT_DIR/core/checkers"
+readonly RESULTS_DIR="$STATE_DIR/results"
+readonly TASK_POOL_FILE="$SCENARIOS_DIR/task_pool.yml"
+readonly TIMER_PID_FILE="$STATE_DIR/timer.pid"
+readonly DEFAULT_DNS=""
+readonly CURRENT_EXAM_FILE="$STATE_DIR/current_exam.yml"
+readonly EXAM_STATUS_FILE="$STATE_DIR/exam_status.yml"
+readonly LAB_NODES=(node1 node2 node3)

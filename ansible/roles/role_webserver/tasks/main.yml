@@ -1,0 +1,53 @@
+# ============================================================
+#  ROLE: role_webserver — TAREAS PRINCIPALES
+# ------------------------------------------------------------
+#  FLUJO:
+#    1. Instala Apache (httpd)
+#    2. Despliega config de puertos (Jinja2) → notify handler
+#    3. Despliega la web (Jinja2 con la variable 'owner')
+#    4. Arranca y habilita el servicio
+# ============================================================
+
+---
+# ------------------------------------------------------------
+# 1) Instalación del paquete
+# ------------------------------------------------------------
+- name: "role_webserver :: Instalar Apache (httpd)"
+  ansible.builtin.dnf:
+    name: httpd
+    state: present
+
+# ------------------------------------------------------------
+# 2) Puerto de escucha (plantilla Jinja2).
+#    Si el fichero CAMBIA → notifica al handler 'reiniciar httpd'
+# ------------------------------------------------------------
+- name: "role_webserver :: Configurar puerto de escucha ({{ http_port }})"
+  ansible.builtin.template:
+    src: ports.conf.j2
+    dest: /etc/httpd/conf.d/ports.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: "reiniciar httpd"
+
+# ------------------------------------------------------------
+# 3) Página principal (plantilla Jinja2 con 'owner')
+# ------------------------------------------------------------
+- name: "role_webserver :: Desplegar index.html (owner: {{ owner }})"
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: "0644"
+
+# ------------------------------------------------------------
+# 4) Servicio: arrancado ahora y habilitado al boot.
+#    Se ejecuta ANTES del handler para no dejarlo caído
+#    si estaba parado y luego el handler lo rearranca.
+# ------------------------------------------------------------
+- name: "role_webserver :: Habilitar y arrancar httpd"
+  ansible.builtin.service:
+    name: httpd
+    state: started
+    enabled: true
