@@ -45,7 +45,7 @@ function print_help() {
     echo ""
     echo "Opciones:"
     echo "  --dns <ip1,ip2>  Cambiar servidores DNS (Defecto: ${DEFAULT_DNS})"
-    echo "  --vault*ult       Pide contraseña para desencriptar Ansible Vault (Usar con 'run')"
+    echo "  --vault       Pide contraseña para desencriptar Ansible Vault (Usar con 'run')"
     echo ""
     echo "Ejemplos:"
     echo "  $0 up"

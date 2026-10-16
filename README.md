@@ -94,7 +94,7 @@ cd RHCE_Lab
    > ⚠️ Los ficheros `exam_00X.yml` existentes son **soluciones de
    > referencia** (spoilers). Para practicar de verdad, parte de cero.
 
-3. **Corregir**: `./lab.sh grade` → resultado por ta
+3. **Corregir**: `./lab.sh grade` → resultado por tareas + informe en
    `state/results/`. Si el cronómetro expiró, la corrección se bloquea.
 
 ## 🔐 El Vault del laboratorio
@@ -138,7 +138,7 @@ Ejecución de exámenes con vault: `./lab.sh run --vault exam_003.yml`
   `ansible.posix.firewalld`, que edita los XML directamente sin demonio.
   Es determinista y portable (obligatorio en WSL2, opcional pero
   recomendado en VM).
-- **LVM sobre loop devices**: los discos s
+- **LVM sobre loop devices**: los discos son loopback dentro de cada
   contenedor. Sin udev, `lvcreate` requiere `--wipesignatures n --zero n`
   (los playbooks de referencia ya lo aplican). No se soportan particiones
   (`/dev/loop0p1`): el LVM se hace sobre el disco raw.
