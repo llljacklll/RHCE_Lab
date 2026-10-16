@@ -109,5 +109,7 @@ RUN systemctl enable fake-disks.service
 # 8) CONFIG ANSIBLE + ARRANQUE
 # ------------------------------------------------------------
 COPY ansible.cfg /etc/ansible/ansible.cfg
+# LVM sin udev (contenedor): override anti-udev
+COPY lvmlocal.conf /etc/lvm/lvmlocal.conf
 ENV ANSIBLE_INVENTORY=/opt/ansible/inventory/hosts.ini
 CMD ["/usr/sbin/init"]
