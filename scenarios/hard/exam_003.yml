@@ -1,20 +1,71 @@
-# ==========================================
-# Examen Hard (Simulacro EX294)
-# ==========================================
+# ============================================================
+#  📚 EXAMEN HARD — Simulacro Oficial EX294
+#     (LVM + Ansible Vault + Jinja2 + Cron)
+# ============================================================
+#  REQUISITOS PREVIOS:
+#    - Vault creado:  ./scripts/create_vault.sh
+#    - Ejecutar con:  ./lab.sh run --vault exam_003.yml
+#
+#  ⚠️ REGLA DE ORO DEL PARSER (core/grade.sh):
+#    Comentarios SOLO en línea completa, nunca al final de una
+#    línea de datos (el parser leería el resto de la línea).
+# ============================================================
+
 ---
 id: exam_003
 difficulty: hard
-title: "EX294 Simulacro (LVM, V
+title: "EX294 Simulacro Oficial (LVM, Vault, Jinja2, Cron)"
 time_limit: 45
+
 tasks:
-  - id: task_1; description: "Crear VG 'vg_exam' en /dev/loop0"
-  - id: task_2; description: "Crear LV 'lv_datos' de 500MB y formatear XFS"
-  - id: task_3; description: "Crear /opt/app/con
-  - id: task_4; description: "Crear usuarios 'web01'' y 'web02' con bucle"
-  - id: task_5; description: "Programar cron para root 'logger ExamenRHCE' cada 5 min"
+
+  # LVM: VG sobre el disco raw loop0 (sin particiones: los loop
+  # devices de Docker no soportan /dev/loop0p1)
+  - id: task_1
+    description: "Crear un Volume Group llamado 'vg_exam' sobre /dev/loop0"
+
+  # LVM: Logical Volume + filesystem XFS
+  - id: task_2
+    description: "Crear un Logical Volume de 500MB llamado 'lv_datos' en 'vg_exam' y formatearlo en XFS"
+
+  # Vault: la contraseña del vault se entrega en el enunciado,
+  # igual que en el EX294 real
+  - id: task_3
+    description: "Crear un archivo /opt/app/config.txt usando la variable 'db_password' encriptada en ansible/files/secrets.yml (contraseña del vault: RhceLab2026)"
+
+  # Jinja2: bucle sobre una lista de usuarios
+  - id: task_4
+    description: "Crear los usuarios 'web01' y 'web02' iterando una lista en Jinja2"
+
+  # Cron: entrada en el crontab de root
+  - id: task_5
+    description: "Programar un cron para root que ejecute 'logger ExamenRHCE' cada 5 minutos"
+
 checks:
-  - task_id: task_1; type: lvm; name: /dev/vg_exam
-  - task_id: t
-  - task_id: task_3; type: file; path: /opt/app/config.txt; contains: "SecretPassword123"
-  - task_id: task_4; type: user; name: web01
-  - task_id: task_5; type: cron; name: "logger ExamenRHCE"; path: root
+
+  # task_1 → existencia del VG (lvs /dev/vg_exam)
+  - task_id: task_1
+    type: lvm
+    name: /dev/vg_exam
+
+  # task_2 → existencia del LV (lvs /dev/vg_exam/lv_datos)
+  - task_id: task_2
+    type: lvm
+    name: /dev/vg_exam/lv_datos
+
+  # task_3 → el fichero debe contener el valor secreto
+  - task_id: task_3
+    type: file
+    path: /opt/app/config.txt
+    contains: "SecretPassword123"
+
+  # task_4 → el checker valida al menos la creación de web01
+  - task_id: task_4
+    type: user
+    name: web01
+
+  # task_5 → grep literal en el crontab de root
+  - task_id: task_5
+    type: cron
+    name: "logger ExamenRHCE"
+    path: root

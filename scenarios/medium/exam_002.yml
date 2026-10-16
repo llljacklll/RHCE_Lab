@@ -1,14 +1,42 @@
-# ==========================================
-# Examen Medio
-# ==========================================
+# ============================================================
+#  📚 EXAMEN MEDIO — "Roles, Variables y Jinja2"
+# ============================================================
+#  OBJETIVO DIDÁCTICO:
+#    El alumno debe aplicar el rol 'role_webserver' sobrescribiendo
+#    sus defaults con vars de playbook (http_port=8080, owner=Victor)
+#    y verificar el resultado desplegado por las plantillas.
+#
+#  ⚠️ REGLA DE ORO DEL PARSER (core/grade.sh):
+#    Los comentarios SIEMPRE en línea completa. NUNCA al final de
+#    una línea de datos (task_id/type/name/...), porque el parser
+#    leería el comentario como parte del valor.
+# ============================================================
+
 ---
 id: exam_002
 difficulty: medium
-title: "Roles y Jinja2"
+title: "Roles, Variables y Jinja2"
 time_limit: 30
+
 tasks:
-  - id: task_1; description: "Usar role 'role_webserver' con puerto 8080 y owner 'Victor'"
-  - id: task_2; description: "Crear index.html que contenga 'Victor'"
+
+  # Tarea 1: aplicar el rol con overrides de variables
+  - id: task_1
+    description: "Usando el role 'role_webserver', instalar httpd en los nodos con el puerto 8080, y definir la variable 'owner' como 'Victor'"
+
+  # Tarea 2: la plantilla index.html.j2 debe renderizar 'Victor'
+  - id: task_2
+    description: "Crear un archivo index.html en /var/www/html/ que contenga la palabra 'Victor'"
+
 checks:
-  - task_id: task_1; type: package; name: httpd
-  - task_id: task_2; type: file; path: /var/www/html/index.html; conta
+
+  # task_1 → el rol debe dejar httpd instalado (rpm -q httpd)
+  - task_id: task_1
+    type: package
+    name: httpd
+
+  # task_2 → el HTML renderizado debe contener 'Victor' (grep)
+  - task_id: task_2
+    type: file
+    path: /var/www/html/index.html
+    contains: "Victor"
