@@ -48,7 +48,7 @@ echo "[OK] repo escrito (EL${MAJOR})"
 
 # ---------- 4) Instalacion ----------
 step "4/7 Instalando engine + plugins"
-dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin python3-pyyaml \
     || fail "dnf install fallo (revisa red/repo)"
 
 # ---------- 5) Servicio ----------

@@ -1,36 +1,5 @@
 # 🚀 RHCE Lab — Simulador del examen EX294 (Red Hat Certified Engineer)
 
-## Prerrequisitos del host
-
-El lab corre sobre **Docker Engine + plugin compose v2** en un host Linux x86_64.
-Dos escenarios soportados:
-
-- **WSL2 (portatil de desarrollo)**: Docker Desktop para Windows con la
-  integracion WSL activada. El kernel de WSL2 no trae nf_tables, por eso
-  firewalld dentro de los contenedores va siempre en modo offline (restriccion R1).
-- **MV Rocky/Alma 10 (escenario de examen)**: Docker Engine nativo (no Desktop).
-  Un solo comando deja la MV lista (idempotente, re-lanzable):
-
-        sudo bash scripts/vm_bootstrap.sh
-
-  Detecta la familia EL (Rocky/Alma/RHEL 9-10), escribe el repo oficial de
-  Docker CE, instala engine + compose plugin, habilita docker.service y
-  verifica /dev/loop-control, cgroup v2 y SELinux.
-
-Checklist del host:
-
-| Requisito | Verificacion |
-|---|---|
-| Docker Engine 24+ | docker version |
-| Compose v2 (plugin) | docker compose version |
-| /dev/loop-control (LVM fake) | ls /dev/loop-control |
-| cgroup v2 | stat -fc %T /sys/fs/cgroup -> cgroup2fs |
-| git con PAT (scope repo) | git ls-remote origin HEAD |
-
-> En la MV se trabaja como root y SELinux puede quedar Enforcing: los
-> contenedores del lab son privileged, no hace falta tocarlo.
-
-
 Simulador completo del examen de certificación **RHCE (EX294)** basado en
 **Ansible Automation**, ejecutado 100% sobre contenedores Docker para ofrecer
 un entorno aislado, reproducible y sin riesgo para tu máquina.
@@ -51,51 +20,76 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 | 🎲 Exámenes aleatorios | `./lab.sh exam --random N` genera exámenes únicos desde `scenarios/task_pool.yml` |
 | ⏱️ Anti-trampas | Cronómetro persistente en `state/exam_status.yml`: si expira, `grade` se bloquea |
 | 📝 Logs persistentes | Cada corrección deja un informe en `state/results/` |
-| 💾 Discos LVM | Cada nodo arranca con `/dev/loop0` y `/dev/loop1` de 1GB para práctica LVM |
+| 💾 Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 1GB: node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
 
-## 📋 Requisitos
+## 📋 Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
 
-- Linux con **Docker Engine + docker compose v2** (recomendado: VM Rocky/Alma/RHEL 9-10)
-- `python3` + `pyyaml` en el host (para el generador aleatorio)
+El escenario soportado es una **MV de la familia EL 9-10** con:
+
+- Docker Engine 24+ y plugin **compose v2**
+- `python3` + `python3-pyyaml` (generador de exámenes aleatorios)
+- `git` (para clonar y contribuir)
 - ~4GB de RAM libres (las imágenes pesan ~1.2GB)
 
-> **¿WSL2?** Funciona con salvedades conocidas (kernel sin nf_tables →
-> firewalld forzado a modo offline). Para la experiencia completa se
-> recomienda una VM Rocky 10.
+**Todo se prepara con un solo comando** (idempotente, re-lanzable):
 
-## 🔧 Preparar el host (Rocky / Alma / RHEL)
+    sudo bash scripts/vm_bootstrap.sh
 
-~~~bash
-# Docker Engine + compose v2
-sudo dnf -y install dnf-plugins-core
-sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-sudo systemctl enable --now docker
+Detecta la familia EL, escribe el repo oficial de Docker CE, instala
+engine + compose + pyyaml, habilita docker.service, **registra los
+`/dev/loop0-15` del kernel** (EL10 no los crea al arrancar y son
+imprescindibles para los discos LVM del lab) y los deja **persistentes**
+con la unidad `rhce-lab-loop.service` (sobreviven a reinicios de la MV).
+Cierra con una batería de verificaciones del host.
 
-# Python + YAML para el generador de exámenes
-sudo dnf -y install python3-pyyaml
+| Requisito | Verificación |
+|---|---|
+| Docker Engine 24+ | `docker version` |
+| Compose v2 (plugin) | `docker compose version` |
+| /dev/loop0-15 registrados | `ls /dev/loop[0-9]*` |
+| rhce-lab-loop.service | `systemctl is-active rhce-lab-loop` |
+| cgroup v2 | `stat -fc %T /sys/fs/cgroup` → `cgroup2fs` |
 
-# (Opcional) lanzar docker sin sudo
-sudo usermod -aG docker $USER && exit   # reentra en la sesión
-~~~
+> Se trabaja como root y SELinux puede quedar **Enforcing**: los
+> contenedores del lab son privileged, no hace falta tocarlo.
 
-## ⚡ Inicio rápido (desde cero)
+> **¿WSL2?** El lab nació en WSL2, pero **ya no es el escenario
+> soportado**: el kernel de WSL2 no trae nf_tables (firewalld forzado a
+> modo offline) y la gestión de loop devices difiere de la de una MV.
+> Usa una MV Rocky 10: se levanta en minutos con cualquier hipervisor.
 
-~~~bash
-# 1) Clonar
+## 🔧 Instalación desde cero (MV limpia o snapshot revertido)
+
+~bash
+# 1) git y credenciales
+sudo dnf -y install git
+git config --global credential.helper store   # PAT la primera vez que pushees
+
+# 2) Clonar
 git clone https://github.com/llljacklll/RHCE_Lab.git
 cd RHCE_Lab
 
-# 2) Levantar el laboratorio (compila imágenes: requiere internet)
-./lab.sh up
+# 3) Host a punto: docker + compose + /dev/loopN persistentes
+sudo bash scripts/vm_bootstrap.sh
 
-# 3) Crear el Ansible Vault del laboratorio (una sola vez)
-#    (Si el clone ya trae ansible/files/secrets.yml, este paso es opcional)
+# 4) Vault: secrets.yml ya viene encriptado en el repo; este paso
+#    crea .vault_pass en ansible/files/ (no viaja en git)
 ./scripts/create_vault.sh
 
-# 4) Batería de pruebas automática
-./lab.sh test
-~~~
+# 5) Levantar (compila imágenes: requiere internet)
+./lab.sh up
+
+# 6) Verificación integral de infraestructura: TODO en verde
+bash scripts/smoke_test.sh
+~
+
+## ⚡ Inicio rápido (host ya preparado)
+
+~bash
+./lab.sh up                 # levantar
+./scripts/create_vault.sh   # vault + .vault_pass (una sola vez)
+./lab.sh test               # batería de pruebas automática
+~
 
 ## 🎮 Uso de la CLI
 
@@ -130,8 +124,10 @@ cd RHCE_Lab
 
 ## 🔐 El Vault del laboratorio
 
-`ansible/files/secrets.yml` (generado por `./scripts/create_vault.sh`)
-contiene cifrada la variable `db_password`, usada por el examen hard.
+`ansible/files/secrets.yml` (encriptado, viaja en git) contiene cifrada
+la variable `db_password`, usada por el examen hard. La contraseña vive
+en `ansible/files/.vault_pass` (**no** viaja en git: cada instalación la
+crea con `./scripts/create_vault.sh`).
 
 - **Contraseña del vault**: `RhceLab2026` (didáctica; en el EX294 real
   te la entregan en el enunciado, igual que aquí)
@@ -141,37 +137,41 @@ Ejecución de exámenes con vault: `./lab.sh run --vault exam_003.yml`
 
 ## 🧪 Smoke test completo (primera sesión)
 
-~~~bash
-./lab.sh up                              # levantar
-./scripts/create_vault.sh                # vault (si no existe)
-./lab.sh test                            # batería automática → TODO PASS
+~bash
+bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vault
+./lab.sh test                           # batería del motor → TODO PASS
 
-./lab.sh exam easy/exam_001.yml          # examen fácil
+./lab.sh exam easy/exam_001.yml         # examen fácil
 ./lab.sh run exam_001.yml
-./lab.sh grade                           # esperado: 3/3 APROBADO
+./lab.sh grade                          # esperado: 3/3 APROBADO
 
-./lab.sh exam medium/exam_002.yml        # examen medio (roles + jinja2)
+./lab.sh exam medium/exam_002.yml       # examen medio (roles + jinja2)
 ./lab.sh run exam_002.yml
-./lab.sh grade                           # esperado: 2/2 APROBADO
+./lab.sh grade                          # esperado: 2/2 APROBADO
 
-./lab.sh exam hard/exam_003.yml          # examen hard (vault + LVM)
-./lab.sh run --vault exam_003.yml        # contraseña: RhceLab2026
-./lab.sh grade                           # esperado: 5/5 APROBADO
+./lab.sh exam hard/exam_003.yml         # examen hard (vault + LVM)
+./lab.sh run --vault exam_003.yml       # contraseña: RhceLab2026
+./lab.sh grade                          # esperado: 5/5 APROBADO
 
-./lab.sh exam --random 4                 # examen aleatorio
+./lab.sh exam --random 4                # examen aleatorio
 ./lab.sh exam --start
 ./lab.sh grade
-~~~
+~
 
 ## 🛠️ Notas técnicas
 
 - **Firewalld en modo offline**: los playbooks usan `offline: true` en
   `ansible.posix.firewalld`, que edita los XML directamente sin demonio.
-  Es determinista y portable (obligatorio en WSL2, opcional pero
-  recomendado en VM).
-- **LVM sobre loop devices**: los discos son loopback dentro de cada
-  contenedor. Sin udev, `lvcreate` requiere `--wipesignatures n --zero n`
-  (los playbooks de referencia ya lo aplican). No se soportan particiones
+  Es determinista y portable (no depende del daemon ni de nf_tables).
+- **LVM sobre loop devices**: los discos son loopback de 1GB. Los loop
+  devices son **recursos globales del kernel**, así que cada nodo usa
+  una **pareja fija** (node1: `loop0/1`, node2: `loop2/3`, node3:
+  `loop4/5`; control ninguno) y `setup-disks.sh` nunca hace
+  `losetup -D`. Como EL10 no crea `/dev/loopN` al arrancar,
+  `vm_bootstrap.sh` los registra vía `LOOP_CTL_ADD` y
+  `rhce-lab-loop.service` los mantiene tras reinicios. Sin udev,
+  `lvcreate` requiere `--wipesignatures n --zero n` (los playbooks de
+  referencia ya lo aplican). No se soportan particiones
   (`/dev/loop0p1`): el LVM se hace sobre el disco raw.
 - **DNS**: la red es fija (172.20.0.0/24) para evitar caídas por caché
   de DNS de Docker. En redes corporativas: `./lab.sh up --dns <ips>`.

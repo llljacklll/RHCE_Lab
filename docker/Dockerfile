@@ -11,7 +11,7 @@
 #   - El usuario 'ansible' (wheel + NOPASSWD) emula al usuario
 #     de examen del EX294 real.
 #   - firewalld se instala y habilita, pero los playbooks lo
-#     usan en modo 'offline' (ver docs/INSTALACION_ROCKY.md).
+#     usan en modo 'offline' (ver README.md (seccion Notas tecnicas)).
 # ============================================================
 
 FROM almalinux:10
@@ -98,7 +98,9 @@ RUN systemctl disable NetworkManager    || true
 # ------------------------------------------------------------
 # 7) DISCOS VIRTUALES PARA PRÁCTICAS LVM
 #    fake-disks.service ejecuta setup-disks.sh al arrancar y
-#    deja /dev/loop0 y /dev/loop1 como "discos" de 1GB.
+#    deja SU pareja de discos por nodo (node1: loop0/1, node2: loop2/3,
+#    node3: loop4/5; control: ninguno). Los loops son globales en el
+#    kernel: por eso cada nodo usa solo los suyos.
 # ------------------------------------------------------------
 COPY setup-disks.sh /usr/local/bin/setup-disks.sh
 RUN chmod +x /usr/local/bin/setup-disks.sh

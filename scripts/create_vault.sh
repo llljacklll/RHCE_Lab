@@ -39,6 +39,13 @@ fi
 if [ -f "$SECRET_FILE" ] && grep -q "ANSIBLE_VAULT" "$SECRET_FILE" 2>/dev/null; then
     if [ "$1" != "--force" ]; then
         echo -e "${YELLOW}[!] '$SECRET_FILE' ya existe y está encriptado. Nada que hacer.${NC}"
+        # FIX: aunque el vault ya exista, asegurar .vault_pass (no viaja en git)
+        PASS_FILE="ansible/files/.vault_pass"
+        if [ ! -f "$PASS_FILE" ]; then
+            printf '%s\n' "$VAULT_PASS" > "$PASS_FILE"
+            chmod 600 "$PASS_FILE"
+            echo -e "${GREEN}[+] Creado $PASS_FILE (no viaja en git).${NC}"
+        fi
         echo -e "${YELLOW}    Usa --force si quieres regenerarlo.${NC}"
         exit 0
     fi
