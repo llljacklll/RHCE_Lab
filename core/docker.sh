@@ -126,7 +126,7 @@ function _setup_ssh_keys() {
 #   contenedores + ping de Ansible a los 3 nodos.
 # ------------------------------------------------------------
 function _finalize_startup() {
-    echo -e "${YELLOW}[!] Esperando a que systemd arranque los 
+    echo -e "${YELLOW}[!] Esperando a que systemd arranque los servicios...${NC}"
     _setup_ssh_keys
     echo ""
     echo -e "${YELLOW}[!] Nota: Firewalld se usa en modo 'offline' (portable en WSL2 y VM).${NC}"
@@ -134,8 +134,8 @@ function _finalize_startup() {
     echo -e "${GREEN}[+] Entorno listo.${NC}"
     cd "$DOCKER_DIR" && docker compose ps
     echo ""
-    echo -e "${CYAN}[+] Verificando con
-
+    echo -e "${CYAN}[+] Verificando conectividad Ansible...${NC}"
+    docker exec -w /opt/ansible control ansible nodes -m ping \
         -i /opt/ansible/inventory/hosts.ini \
         --ssh-common-args="-o StrictHostKeyChecking=no" 2>/dev/null
 }
@@ -179,7 +179,7 @@ function lab_stop() {
 # ------------------------------------------------------------
 # lab_down → destruir contenedores, red, volúmenes e imágenes
 #   (usa ps -aq para detectar también contenedores parados)
-# -------------------
+# ------------------------------------------------------------
 function lab_down() {
     cd "$DOCKER_DIR" || exit 1
     if [ -z "$(docker compose ps -aq 2>/dev/null)" ]; then
@@ -193,7 +193,7 @@ function lab_down() {
 
 # ------------------------------------------------------------
 # lab_reset → regeneración limpia (down + up)
-# ------------------------------
+# ------------------------------------------------------------
 function lab_reset() {
     lab_down
     echo "-----------------------------------"

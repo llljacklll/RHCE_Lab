@@ -175,7 +175,7 @@ function _start_timer() {
     (
         sleep $((minutes * 60))
         if [ -f "$EXAM_STATUS_FILE" ]; then
-            s
+            sed -i 's/status: running/status: expired/' "$EXAM_STATUS_FILE"
         fi
     ) &
     echo $! > "$TIMER_PID_FILE"
