@@ -19,7 +19,7 @@ exam = {"id": "random_exam", "difficulty": "mixed", "title": "Examen Aleatorio R
 for t in selected:
     exam["tasks"].append({"id": t["id"], "description": t["description"]})
     for c in t.get("checks", []): item = {"task_id": t["id"]}; item.update(c); exam["checks"].append(item)
-print(yaml.d
+print(yaml.dump(exam, default_flow_style=False, sort_keys=False, width=1000))
 PYEOF
     if [ ! -s "$CURRENT_EXAM_FILE" ]; then echo -e "${RED}[-] Error: Python no generó el examen.${NC}"; exit 1; fi
     echo -e "${GREEN}[+] Examen generado correctamente.${NC}"

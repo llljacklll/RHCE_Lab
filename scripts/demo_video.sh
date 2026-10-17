@@ -62,11 +62,11 @@ else
 fi
 
 # ---------- 4/7 ESTRELLA ----------
-banner "4/7 PRUEBAS ESTRELLA: vault + LVM por nodo"
+banner "4/7 PRUEBAS ESTRELLA: vault + discos por nodo"
 cmd "docker exec control ansible all -m ping"
 cmd "docker exec control ansible-vault view --vault-password-file /opt/ansible/files/.vault_pass /opt/ansible/files/secrets.yml"
-cmd "docker exec node1 bash -c 'pvs; vgs'"
-cmd "docker exec node3 bash -c 'pvs; vgs; losetup -a | head -6'"
+cmd "docker exec node1 bash -c 'lsblk -o NAME,SIZE,TYPE /dev/loop0 /dev/loop1'"
+cmd "docker exec node3 bash -c 'lsblk -o NAME,SIZE,TYPE /dev/loop4 /dev/loop5'"
 
 # ---------- 5/7 EXAMEN ----------
 banner "5/7 MODO EXAMEN"
