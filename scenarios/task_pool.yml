@@ -77,13 +77,13 @@ tasks:
   # ---------- HARD ----------
   - id: hard_lvm_vg
     difficulty: hard
-    description: "Crear un Volume Group 'vg_data' en /dev/loop0"
+    description: "Crear un Volume Group 'vg_data' en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4)"
     checks:
       - type: lvm
         name: /dev/vg_data
   - id: hard_lvm_full
     difficulty: hard
-    description: "Crear VG 'vg_data' en /dev/loop0, LV 'lv_data' de 300MB, formatearlo ext4 y montarlo en /mnt/datos"
+    description: "Crear VG 'vg_data' en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4), LV 'lv_data' de 300MB, formatearlo ext4 y montarlo en /mnt/datos"
     checks:
       - type: lvm
         name: /dev/vg_data
