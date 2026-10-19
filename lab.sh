@@ -59,7 +59,7 @@ function print_help() {
     echo "Modo Examen:"
     echo "  exam                  Mostrar menú de ayuda de exámenes"
     echo "  exam <archivo.yml>    Lanzar examen estático (ej: $0 exam easy/exam_001.yml)"
-    echo "  exam --random [N]     Generar examen aleatorio y guardarlo (Defecto: 3 tareas)"
+    echo "  exam --random [N] [dif]  Generar examen aleatorio (Defecto: 3 tareas, mixed)"
     echo "  exam --start          Iniciar cronómetro y mostrar examen generado"
     echo ""
     echo "Evaluación:"

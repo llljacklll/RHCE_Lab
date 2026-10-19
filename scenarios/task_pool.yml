@@ -1,31 +1,111 @@
 # ========================
-# Banco de Tareas (Aleatorio)
-# ============
+# Banco de Tareas (Aleatorio) - v2 "Task Pack #1"
+# Reglas: cada tarea es AUTOCONTENIDA y CUALQUIER combinacion
+# de tareas del pool es resoluble simultaneamente (sin choques
+# de dispositivo: el LVM completo reutiliza vg_data@loop0).
+# ============================
 ---
 tasks:
+  # ---------- EASY ----------
   - id: rand_pkg_httpd
+    difficulty: easy
     description: "Instalar el servidor web httpd"
     checks:
       - type: package
         name: httpd
   - id: rand_svc_httpd
+    difficulty: easy
     description: "Habilitar y arrancar el servicio httpd"
     checks:
       - type: service
         name: httpd
   - id: rand_user_deploy
+    difficulty: easy
     description: "Crear el usuario 'deployer'"
     checks:
       - type: user
         name: deployer
+  - id: rand_pkg_vsftpd
+    difficulty: easy
+    description: "Instalar el servidor FTP vsftpd"
+    checks:
+      - type: package
+        name: vsftpd
+  - id: rand_pkg_mariadb
+    difficulty: easy
+    description: "Instalar el servidor de base de datos mariadb-server"
+    checks:
+      - type: package
+        name: mariadb-server
+  - id: rand_user_webmaster
+    difficulty: easy
+    description: "Crear el usuario 'webmaster'"
+    checks:
+      - type: user
+        name: webmaster
+  - id: rand_group_devs
+    difficulty: easy
+    description: "Crear el grupo 'developers' con GID 3000"
+    checks:
+      - type: group
+        name: developers
+        path: "3000"
+  # ---------- MEDIUM ----------
+  - id: med_pkg_svc_chrony
+    difficulty: medium
+    description: "Instalar chrony y dejar el servicio chronyd activo"
+    checks:
+      - type: package
+        name: chrony
+      - type: service
+        name: chronyd
+  - id: med_pkg_svc_vsftpd
+    difficulty: medium
+    description: "Instalar vsftpd y dejar el servicio vsftpd activo"
+    checks:
+      - type: package
+        name: vsftpd
+      - type: service
+        name: vsftpd
+  - id: med_user_app
+    difficulty: medium
+    description: "Crear el usuario 'appuser' con UID 2500"
+    checks:
+      - type: user
+        name: appuser
+        path: "2500"
+  # ---------- HARD ----------
   - id: hard_lvm_vg
+    difficulty: hard
     description: "Crear un Volume Group 'vg_data' en /dev/loop0"
     checks:
       - type: lvm
         name: /dev/vg_data
+  - id: hard_lvm_full
+    difficulty: hard
+    description: "Crear VG 'vg_data' en /dev/loop0, LV 'lv_data' de 300MB, formatearlo ext4 y montarlo en /mnt/datos"
+    checks:
+      - type: lvm
+        name: /dev/vg_data
+      - type: lvm
+        name: /dev/vg_data/lv_data
+      - type: filesystem
+        name: /dev/vg_data/lv_data
+        path: ext4
+      - type: mount
+        name: /mnt/datos
+        path: /dev/vg_data/lv_data
   - id: hard_cron
+    difficulty: hard
     description: "Programar cron para ansible que ejecute '/usr/bin/echo backup'"
     checks:
       - type: cron
         name: "/usr/bin/echo backup"
         path: ansible
+  - id: hard_cron_root
+    difficulty: hard
+    description: "Programar cron para root que ejecute '/usr/local/bin/backup.sh'"
+    checks:
+      - type: cron
+        name: "/usr/local/bin/backup.sh"
+        path: root

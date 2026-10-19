@@ -36,7 +36,7 @@ function lab_exam() {
     # ---------- --random [N]: generar y guardar ----------
     if [ "$mode" = "--random" ]; then
         shift
-        generate_random_exam "$1"
+        generate_random_exam "$1" "${2:-mixed}"
         echo ""
         echo -e "${YELLOW}=========================================${NC}"
         echo -e "${CYAN}[!] Examen guardado en: state/current_exam.yml${NC}"
@@ -103,7 +103,7 @@ function _list_available_exams() {
         | sed "s|$SCENARIOS_DIR/||"
     echo ""
     echo -e "${CYAN}[+] Comandos de examen:${NC}"
-    echo "  ./lab.sh exam --random [numero_tareas]  (Genera y guarda)"
+    echo "  ./lab.sh exam --random [N] [easy|medium|hard|mixed]  (Genera y guarda)"
     echo "  ./lab.sh exam --start                   (Muestra y arranca cronómetro)"
     echo "  ./lab.sh exam easy/exam_001.yml          (Carga estática directamente)"
 }
