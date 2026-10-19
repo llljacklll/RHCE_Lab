@@ -126,6 +126,8 @@ function _setup_ssh_keys() {
 #   contenedores + ping de Ansible a los 3 nodos.
 # ------------------------------------------------------------
 function _finalize_startup() {
+    # FIX12: discos + filtro LVM por nodo
+    lab_disks_finalize || true
     echo -e "${YELLOW}[!] Esperando a que systemd arranque los servicios...${NC}"
     _setup_ssh_keys
     echo ""
@@ -144,6 +146,8 @@ function _finalize_startup() {
 # lab_up → construir imágenes (--build) y levantar TODO
 # ------------------------------------------------------------
 function lab_up() {
+    # FIX12: arranque fresh -> discos pristinos
+    touch /run/rhce-lab-fresh 2>/dev/null || true
     prepare_local_env
     setup_docker_dns "$DNS_CONFIG"
     echo -e "${GREEN}[+] Levantando laboratorio (Construyendo imágenes)...${NC}"
@@ -189,6 +193,8 @@ function lab_down() {
     echo -e "${YELLOW}[!] Destruyendo laboratorio (total: contenedores, red, volúmenes e imágenes)...${NC}"
     docker compose down -v --remove-orphans --rmi all
     echo -e "${GREEN}[+] Laboratorio destruido por completo.${NC}"
+    # FIX12: liberar loops (para que no se desplacen)
+    lab_disks_release || true
 }
 
 # ------------------------------------------------------------
@@ -210,3 +216,7 @@ function lab_shell() {
     echo -e "${YELLOW}Tip: para salir del contenedor, escribe 'exit'.${NC}"
     docker exec -it control bash
 }
+
+# FIX12: discos + doctor + autostart
+source "$(dirname "$(readlink -f "$0")")/core/disks.sh" 2>/dev/null \
+  || source core/disks.sh 2>/dev/null || true

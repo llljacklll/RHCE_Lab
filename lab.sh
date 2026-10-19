@@ -129,6 +129,8 @@ case "$ACTION" in
     stop)  lab_stop ;;
     reset) print_banner; lab_reset ;;
     shell) lab_shell ;;
+    doctor)   lab_doctor ;;
+    autostart) lab_autostart ;;
     run)   lab_run ;;
     exam)  lab_exam $EXAM_ARGS ;; 
     grade) lab_grade ;;
