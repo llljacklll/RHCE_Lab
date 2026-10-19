@@ -1,4 +1,27 @@
 #!/bin/bash
+
+# [DEP-GUARD] v1.1.2 - dependencias del host se comprueban al lanzar lab.sh
+# falta algo -> auto-ejecuta scripts/vm_bootstrap.sh (idempotente)
+command -v docker >/dev/null 2>&1 || DEP_MISSING=1
+docker compose version >/dev/null 2>&1 || DEP_MISSING=1
+python3 -c "import yaml" >/dev/null 2>&1 || DEP_MISSING=1
+[ -e /dev/loop0 ] || DEP_MISSING=1
+if [ "${DEP_MISSING:-0}" = "1" ]; then
+  echo "[!] Faltan dependencias del host -> ejecutando scripts/vm_bootstrap.sh"
+  bash "$(dirname "$(readlink -f "$0")")/scripts/vm_bootstrap.sh" || { echo "[X] vm_bootstrap.sh fallo"; exit 1; }
+fi
+docker info >/dev/null 2>&1 || systemctl start docker >/dev/null 2>&1 || true
+# [FIX10] .vault_pass es gitignored a proposito (secreto local); un clone
+# fresco no lo trae -> se crea si falta para que smoke/vault/examenes funcionen.
+VPASS="$(dirname "$(readlink -f "$0")")/ansible/files/.vault_pass"
+if [ ! -f "$VPASS" ]; then
+  mkdir -p "$(dirname "$VPASS")"
+  printf 'RhceLab2026\n' > "$VPASS"
+  chmod 600 "$VPASS"
+  echo "[+] Creado $VPASS (gitignored a proposito)"
+fi
+
+
 # ==========================================
 # RHCE LAB PRO - Router Principal
 # ==========================================
