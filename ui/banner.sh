@@ -14,7 +14,7 @@
 function print_banner() {
 
     # ---------- Metadatos ----------
-    local version="v1.0"
+    local version="$(git -C "$(dirname "$(readlink -f "$0")")" describe --tags --always 2>/dev/null || echo "v1.2.0")"
     local date_now
     date_now=$(date '+%Y-%m-%d %H:%M:%S')
 

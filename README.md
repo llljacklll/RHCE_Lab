@@ -20,7 +20,8 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 | 🎲 Exámenes aleatorios | `./lab.sh exam --random N` genera exámenes únicos desde `scenarios/task_pool.yml` |
 | ⏱️ Anti-trampas | Cronómetro persistente en `state/exam_status.yml`: si expira, `grade` se bloquea |
 | 📝 Logs persistentes | Cada corrección deja un informe en `state/results/` |
-| 💾 Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 1GB: node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
+| 💾 Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 512MB (1GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
+| 🚀 Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
 
 ## 📋 Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
 
@@ -41,6 +42,8 @@ engine + compose + pyyaml, habilita docker.service, **registra los
 imprescindibles para los discos LVM del lab) y los deja **persistentes**
 con la unidad `rhce-lab-loop.service` (sobreviven a reinicios de la MV).
 Cierra con una batería de verificaciones del host.
+**Desde v1.2.0 no hace falta ejecutarlo a mano:** cualquier `lab.sh`
+detecta dependencias faltantes y lo lanza automáticamente.
 
 | Requisito | Verificación |
 |---|---|
@@ -60,7 +63,7 @@ Cierra con una batería de verificaciones del host.
 
 ## 🔧 Instalación desde cero (MV limpia o snapshot revertido)
 
-~bash
+```bash
 # 1) git y credenciales
 sudo dnf -y install git
 git config --global credential.helper store   # PAT la primera vez que pushees
@@ -69,27 +72,57 @@ git config --global credential.helper store   # PAT la primera vez que pushees
 git clone https://github.com/llljacklll/RHCE_Lab.git
 cd RHCE_Lab
 
-# 3) Host a punto: docker + compose + /dev/loopN persistentes
-sudo bash scripts/vm_bootstrap.sh
+# 3) Levantar. Si el host no tiene Docker/compose o /dev/loopN, lab.sh
+#    lanza scripts/vm_bootstrap.sh él solo; .vault_pass se crea si falta
+./lab.sh up        # compila imágenes: requiere internet (~5-10 min la 1ª vez)
 
-# 4) Vault: secrets.yml ya viene encriptado en el repo; este paso
-#    crea .vault_pass en ansible/files/ (no viaja en git)
-./scripts/create_vault.sh
-
-# 5) Levantar (compila imágenes: requiere internet)
-./lab.sh up
-
-# 6) Verificación integral de infraestructura: TODO en verde
+# 4) Verificación integral de infraestructura: TODO en verde
 bash scripts/smoke_test.sh
-~
+```
+
+> `vm_bootstrap.sh` sigue disponible a mano (`sudo bash scripts/vm_bootstrap.sh`,
+> idempotente y re-lanzable) por si prefieres dejar el host a punto antes.
+> Para volver a un **snapshot antiguo** de la MV, mira la sección siguiente.
+
+## ♻️ Restaurar la MV / recuperar un snapshot
+
+Flujo probado de punta a punta con una MV restaurada **sin Docker y sin
+/dev/loopN**: el lab auto-bootstrapea el host, recompila desde cero y
+queda prístino.
+
+**El atajo** (docker si falta + `pull` + `up` + `doctor` en un solo comando):
+
+```bash
+bash bootstrap.sh
+```
+
+> Si el snapshot tenía cambios sin commitear, el `pull` interno de
+> `bootstrap.sh` se lo salta: usa el flujo manual con `stash`.
+
+**El flujo manual** equivalente, para saber qué pasa dentro:
+
+```bash
+cd /root/RHCE_Lab
+
+# Solo si el snapshot tenía cambios sin commitear (sin esto, el pull aborta):
+git stash push -m "locales del snapshot" -- lab.sh
+
+git pull --ff-only
+./lab.sh reset
+```
+
+- `reset` destruye contenedores, red, volúmenes e **imágenes antiguas** del
+  snapshot: nunca mezclas binarios viejos con código nuevo.
+- Los discos quedan **prístinos** (wipe con reintentos) y el filtro LVM se
+  aplica por nodo → los checkers LVM **fallan honestos** hasta que crees la VG.
+- Si falta algo en el host (Docker, loops...), lab.sh lanza `vm_bootstrap.sh`.
 
 ## ⚡ Inicio rápido (host ya preparado)
 
-~bash
-./lab.sh up                 # levantar
-./scripts/create_vault.sh   # vault + .vault_pass (una sola vez)
-./lab.sh test               # batería de pruebas automática
-~
+```bash
+./lab.sh up     # levantar (.vault_pass se crea solo si falta)
+./lab.sh test   # batería de pruebas automática
+```
 
 ## 🎮 Uso de la CLI
 
@@ -98,7 +131,9 @@ bash scripts/smoke_test.sh
 | `./lab.sh up` | Construir imágenes y levantar (lento, requiere internet) |
 | `./lab.sh start` / `stop` | Levantar sin recompilar / detener conservando datos |
 | `./lab.sh down` | Destruir contenedores, red e imágenes (limpieza total) |
-| `./lab.sh reset` | Destruir y reconstruir todo |
+| `./lab.sh reset` | Destruir y reconstruir todo (auto-prepara el host si faltan deps) |
+| `./lab.sh doctor` | Chequeo rápido: docker, contenedores, discos por nodo y filtro LVM |
+| `./lab.sh autostart` | Instalar el autoarranque del lab con la MV (unidad `rhce-lab.service`) |
 | `./lab.sh shell` | Entrar por SSH al nodo control |
 | `./lab.sh run <playbook.yml>` | Ejecutar un playbook contra los 3 nodos |
 | `./lab.sh run --vault <playbook.yml>` | Ídem, pidiendo contraseña de Vault |
@@ -127,7 +162,8 @@ bash scripts/smoke_test.sh
 `ansible/files/secrets.yml` (encriptado, viaja en git) contiene cifrada
 la variable `db_password`, usada por el examen hard. La contraseña vive
 en `ansible/files/.vault_pass` (**no** viaja en git: cada instalación la
-crea con `./scripts/create_vault.sh`).
+crea con `./scripts/create_vault.sh`; desde v1.2.0 `lab.sh` la crea
+automáticamente si falta).
 
 - **Contraseña del vault**: `RhceLab2026` (didáctica; en el EX294 real
   te la entregan en el enunciado, igual que aquí)
@@ -137,7 +173,7 @@ Ejecución de exámenes con vault: `./lab.sh run --vault exam_003.yml`
 
 ## 🧪 Smoke test completo (primera sesión)
 
-~bash
+```bash
 bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vault
 ./lab.sh test                           # batería del motor → TODO PASS
 
@@ -156,14 +192,17 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 ./lab.sh exam --random 4                # examen aleatorio
 ./lab.sh exam --start
 ./lab.sh grade
-~
+```
 
 ## 🛠️ Notas técnicas
 
+- **Autoarranque (DEP-GUARD)**: al ejecutar cualquier `lab.sh`, si faltan
+  Docker, compose, pyyaml o `/dev/loop0`, se lanza `vm_bootstrap.sh`
+  automáticamente (idempotente). También se crea `.vault_pass` si falta.
 - **Firewalld en modo offline**: los playbooks usan `offline: true` en
   `ansible.posix.firewalld`, que edita los XML directamente sin demonio.
   Es determinista y portable (no depende del daemon ni de nf_tables).
-- **LVM sobre loop devices**: los discos son loopback de 1GB. Los loop
+- **LVM sobre loop devices**: los discos son loopback de 512MB. Los loop
   devices son **recursos globales del kernel**, así que cada nodo usa
   una **pareja fija** (node1: `loop0/1`, node2: `loop2/3`, node3:
   `loop4/5`; control ninguno) y `setup-disks.sh` nunca hace
@@ -173,8 +212,33 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
   `lvcreate` requiere `--wipesignatures n --zero n` (los playbooks de
   referencia ya lo aplican). No se soportan particiones
   (`/dev/loop0p1`): el LVM se hace sobre el disco raw.
+- **Filtro LVM por nodo (checkers honestos)**: la imagen hornea un
+  `lvmlocal.conf` con `filter`/`global_filter` para que cada nodo solo
+  vea **sus** discos, y `fake-disks.service` ejecuta `setup-disks.sh` en
+  el arranque de cada contenedor (systemd real). Un nodo no puede ver
+  los PV de otro: los checkers LVM solo dan OK si la VG existe **en ese
+  nodo** (en el lab prístino dan FAIL, como debe ser).
 - **DNS**: la red es fija (172.20.0.0/24) para evitar caídas por caché
   de DNS de Docker. En redes corporativas: `./lab.sh up --dns <ips>`.
+
+## 🆕 Novedades de v1.2.0 (autoarranque total)
+
+- **DEP-GUARD**: `lab.sh` detecta dependencias del host faltantes y
+  auto-ejecuta `vm_bootstrap.sh` (probado en una MV restaurada sin Docker).
+- **Discos idempotentes por nodo** + `fake-disks.service` (systemd) y
+  `lvmlocal.conf` por nodo con filtro LVM → checkers honestos.
+- **Wipe prístino con reintentos** de los discos en cada arranque/reset.
+- **`.vault_pass` automático** en el primer uso.
+- **`./lab.sh doctor`**: chequeo rápido del lab (docker, contenedores,
+  discos por nodo y filtro LVM).
+- **`./lab.sh autostart`**: instala `rhce-lab.service` (systemd) — el lab
+  se levanta solo al arrancar la MV. Se quita con
+  `systemctl disable rhce-lab`.
+- **CI en cada push**: `bash -n`, validación de YAML, heredocs de python
+  y consistencia de checkers.
+- **Task Pack #1**: pool aleatorio renovado (14 tareas en 3 dificultades,
+  con LVM multi-nodo sin choques de dispositivo).
+- **Flujo de recuperación documentado** (restaurar MV → `pull` → `reset`).
 
 ## 🗺️ Roadmap
 

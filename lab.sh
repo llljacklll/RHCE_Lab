@@ -55,6 +55,8 @@ function print_help() {
     echo "  reset    Resetear por completo (down + up)"
     echo "  shell    Entrar al nodo 'control'"
     echo "  run      Ejecutar un playbook (ej: $0 run site.yml)"
+    echo "  doctor      Chequeo rápido: docker, contenedores, discos y filtro LVM"
+    echo "  autostart   Instalar el autoarranque del lab con la MV (systemd)"
     echo ""
     echo "Modo Examen:"
     echo "  exam                  Mostrar menú de ayuda de exámenes"
