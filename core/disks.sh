@@ -4,7 +4,7 @@
 #  FUNCIONES:
 #    lab_disks_finalize  → asegura discos + filtro LVM en cada
 #                          nodo; wipe SOLO si el arranque es fresh
-#    lab_disks_release   → libera loops al hacer down
+#    lab_disks_release   → libera DM del lab + loops (down)
 #    lab_doctor          → chequeo rápido del laboratorio
 #    lab_autostart       → instala el autoarranque (systemd)
 #
@@ -18,6 +18,10 @@
 #      SUS discos: se acaban los falsos OK entre nodos.
 #    - El wipe solo ocurre tras "lab.sh up/reset" (arranque
 #      fresh). Un "lab.sh start" NO borra tu trabajo.
+#    - [FIX DM-GLOBAL v1.3.2] Los LV activos al hacer 'down'
+#      SOBREVIVEN en el kernel del host (docker rm no los
+#      quita): bloquean nombres (EBUSY) y retienen los loops.
+#      lab_disks_release los limpia ANTES de liberar loops.
 # ============================================================
 
 # ---------- config ----------
@@ -57,6 +61,35 @@ _loop_wait() {
         i=$((i+1))
     done
     _loop_on_host "$dev"
+}
+
+# ---------- limpieza DM del lab ----------
+# [FIX DM-GLOBAL v1.3.2] El registro de device-mapper vive en
+# el kernel del HOST (los 3 nodos lo comparten). Los LV que
+# queden activos al hacer 'down' sobreviven a docker rm.
+#
+# SEGURIDAD (doble filtro, el host bootea de LVM rlm-*):
+#   1. Solo nombres de DM que empiezan por 'vg_*' (lab)
+#   2. Solo si dependen de los loops del lab (7:0 - 7:5)
+# JAMAS dmsetup remove_all ni tocar rlm-*: eso mataria el
+# disco raiz del host.
+_lab_dm_release() {
+    local d deps
+    command -v dmsetup >/dev/null 2>&1 || return 0
+    for d in $(dmsetup ls 2>/dev/null | awk '{print $1}' \
+                | grep -E '^vg_'); do
+        deps=$(dmsetup deps "$d" 2>/dev/null || true)
+        echo "$deps" \
+            | grep -qE '\(7, *(0|1|2|3|4|5)\)' || continue
+        if dmsetup remove "$d" 2>/dev/null; then
+            echo "  [OK] liberado DM $d"
+        elif dmsetup remove --force "$d" 2>/dev/null; then
+            echo "  [OK] liberado DM $d (--force)"
+        else
+            echo "  [!!] DM $d no liberado"
+        fi
+    done
+    return 0
 }
 
 # ---------- filtro LVM por nodo ----------
@@ -172,12 +205,16 @@ lab_disks_finalize() {
 }
 
 # ============================================================
-# lab_disks_release — liberar loops al hacer down
+# lab_disks_release — liberar DM del lab + loops al hacer down
 #   Sin esto, los números se desplazan entre resets
-#   (loop0/2/4 deben seguir siendo loop0/2/4).
+#   (loop0/2/4 deben seguir siendo loop0/2/4) y los DM
+#   zombis bloquean los nombres en el próximo examen.
+#   ORDEN: primero DM (un LV activo retiene el loop y
+#   losetup -d fallaría con EBUSY), luego loops.
 # ============================================================
 lab_disks_release() {
     local dev
+    _lab_dm_release
     for dev in loop0 loop1 loop2 loop3 loop4 loop5; do
         if _loop_on_host "$dev"; then
             losetup -d "/dev/$dev" 2>/dev/null \
@@ -191,7 +228,7 @@ lab_disks_release() {
 # lab_doctor — estado general en 10 segundos
 # ============================================================
 lab_doctor() {
-    local c node dev fs
+    local c node dev fs dms se
     echo "=== RHCE Lab :: doctor ====================="
     if docker info >/dev/null 2>&1; then
         echo "[OK] docker daemon"
@@ -225,6 +262,26 @@ lab_doctor() {
             echo "[!!] $node sin filtro LVM"
         fi
     done
+    # [FIX DM-GLOBAL v1.3.2] residuos vg_* en el kernel host
+    dms=$(dmsetup ls 2>/dev/null | awk '{print $1}' \
+          | grep -E '^vg_' | tr '\n' ' ')
+    if [ -n "$dms" ]; then
+        echo "[!!] device-mapper residual: $dms"
+        echo "     (limpialo con ./lab.sh reset)"
+    else
+        echo "[OK] device-mapper sin residuos vg_*"
+    fi
+    # SELinux del host: las tareas fcontext del pool medium
+    # no son aplicables si el kernel del host lo tiene apagado
+    se=$(getenforce 2>/dev/null \
+         || { [ -d /sys/fs/selinux ] \
+              && echo Permissive || echo Disabled; })
+    if [ "$se" = "Disabled" ]; then
+        echo "[!!] SELinux del host desactivado"
+        echo "     (tareas fcontext del pool no aplicables)"
+    else
+        echo "[OK] SELinux del host: $se"
+    fi
     echo "============================================"
 }
 

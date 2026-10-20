@@ -1,8 +1,14 @@
 # ========================
 # Banco de Tareas (Aleatorio) - v2 "Task Pack #1"
 # Reglas: cada tarea es AUTOCONTENIDA y CUALQUIER combinacion
-# de tareas del pool es resoluble simultaneamente (sin choques
-# de dispositivo: el LVM completo reutiliza vg_data@loop0).
+# de tareas del pool es resoluble simultaneamente.
+#
+# [FIX DM-GLOBAL v1.3.2] El registro de device-mapper es
+# GLOBAL al kernel y los 3 nodos comparten kernel: un VG con
+# nombre FIJO solo puede activar sus LV en UN nodo (EBUSY en
+# los otros dos). Por eso las tareas LVM piden 'vg_<nodo>' y
+# sus checks usan el token __NODE__, que core/grade.sh
+# expande al nombre de cada nodo antes de llamar al checker.
 # ============================
 ---
 tasks:
@@ -77,24 +83,24 @@ tasks:
   # ---------- HARD ----------
   - id: hard_lvm_vg
     difficulty: hard
-    description: "Crear un Volume Group 'vg_data' en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4)"
+    description: "Crear un Volume Group 'vg_' + nombre del nodo (node1 -> vg_node1, node2 -> vg_node2, node3 -> vg_node3) en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4)"
     checks:
       - type: lvm
-        name: /dev/vg_data
+        name: /dev/vg___NODE__
   - id: hard_lvm_full
     difficulty: hard
-    description: "Crear VG 'vg_data' en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4), LV 'lv_data' de 300MB, formatearlo ext4 y montarlo en /mnt/datos"
+    description: "Crear VG 'vg_' + nombre del nodo (node1 -> vg_node1, node2 -> vg_node2, node3 -> vg_node3) en el disco extra del nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4), LV 'lv_data' de 300MB, formatearlo ext4 y montarlo en /mnt/datos"
     checks:
       - type: lvm
-        name: /dev/vg_data
+        name: /dev/vg___NODE__
       - type: lvm
-        name: /dev/vg_data/lv_data
+        name: /dev/vg___NODE__/lv_data
       - type: filesystem
-        name: /dev/vg_data/lv_data
+        name: /dev/vg___NODE__/lv_data
         path: ext4
       - type: mount
         name: /mnt/datos
-        path: /dev/vg_data/lv_data
+        path: /dev/vg___NODE__/lv_data
   - id: hard_cron
     difficulty: hard
     description: "Programar cron para ansible que ejecute '/usr/bin/echo backup'"

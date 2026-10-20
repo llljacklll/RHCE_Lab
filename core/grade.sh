@@ -12,6 +12,12 @@
 #    4. PERSISTENCIA: guarda un log limpio (sin colores) en
 #       state/results/ con la traza de aciertos y fallos.
 #    5. LIMPIEZA: resetea el estado del examen al terminar.
+#
+#  [FIX DM-GLOBAL v1.3.2] Los checks pueden llevar el token
+#  __NODE__ en 'name' y 'path': _run_check lo expande al
+#  nombre del nodo actual. Así una tarea puede exigir nombres
+#  distintos por nodo (vg_node1, vg_node2...) sin tocar los
+#  checkers, que siguen recibiendo rutas concretas.
 # ============================================================
 
 # ------------------------------------------------------------
@@ -143,10 +149,10 @@ function _parse_and_check_exam() {
         if [[ $line =~ ^-.*task_id:[[:space:]]*(.*) ]]; then
             if [[ -n "$task_id" && -n "$check_type" && -n "$check_name" ]]; then
                 if _run_check "$task_id" "$check_type" "$check_name" "$check_path"; then
-                    echo -e "  [${GREEN}PASS${NC}] $task_id (${check_type}: $check_name)"
+                    echo -e "  [${GREEN}PASS${NC}] $task_id (${check_type}: ${check_name//__NODE__/<nodo>})"
                     ref_passed=$((ref_passed + 1))
                 else
-                    echo -e "  [${RED}FAIL${NC}] $task_id (${check_type}: $check_name)"
+                    echo -e "  [${RED}FAIL${NC}] $task_id (${check_type}: ${check_name//__NODE__/<nodo>})"
                 fi
                 ref_total=$((ref_total + 1))
             fi
@@ -173,10 +179,10 @@ function _parse_and_check_exam() {
     # -- El ÚLTIMO check no tiene sucesor: se ejecuta al salir --
     if [[ -n "$task_id" && -n "$check_type" && -n "$check_name" ]]; then
         if _run_check "$task_id" "$check_type" "$check_name" "$check_path"; then
-            echo -e "  [${GREEN}PASS${NC}] $task_id (${check_type}: $check_name)"
+            echo -e "  [${GREEN}PASS${NC}] $task_id (${check_type}: ${check_name//__NODE__/<nodo>})"
             ref_passed=$((ref_passed + 1))
         else
-            echo -e "  [${RED}FAIL${NC}] $task_id (${check_type}: $check_name)"
+            echo -e "  [${RED}FAIL${NC}] $task_id (${check_type}: ${check_name//__NODE__/<nodo>})"
         fi
         ref_total=$((ref_total + 1))
     fi
@@ -201,7 +207,13 @@ function _run_check() {
     # -- Ejecución en cada nodo (source del plugin) --
     for node in "${LAB_NODES[@]}"; do
         local result
-        result=$(source "$CHECKERS_DIR/check_${check_type}.sh" "$node" "$check_name" "$check_path")
+        # [FIX DM-GLOBAL] expandir __NODE__ -> nombre del nodo:
+        # los checks de LVM llevan /dev/vg___NODE__ y aqui se
+        # convierte en la ruta real de CADA nodo (vg_node1...)
+        local cname cpath
+        cname="${check_name//__NODE__/$node}"
+        cpath="${check_path//__NODE__/$node}"
+        result=$(source "$CHECKERS_DIR/check_${check_type}.sh" "$node" "$cname" "$cpath")
         if [ "$result" != "OK" ]; then
             all_ok=false
             break              # Con un fallo basta: no iterar más
@@ -220,7 +232,7 @@ function _print_grade_result() {
     if [ "$passed" -eq "$total" ]; then
         echo -e "${GREEN}¡ENHORABUENA, EXAMEN APROBADO!${NC}"
     else
-        echo -e "${RED}Examen suspendido. Revisa los puntos fallidos.${NC}"
+        echo -e "${RED}Examen suspendido. Revisa los puntos fallinos.${NC}"
     fi
 }
 
