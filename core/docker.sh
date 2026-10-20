@@ -146,8 +146,13 @@ function _finalize_startup() {
 # lab_up → construir imágenes (--build) y levantar TODO
 # ------------------------------------------------------------
 function lab_up() {
-    # FIX12: arranque fresh -> discos pristinos
-    touch /run/rhce-lab-fresh 2>/dev/null || true
+    # FIX12e: fresh SOLO si el lab NO estaba ya arriba.
+    # (up/bootstrap sobre lab corriendo = NO borrar
+    #  el trabajo del alumno en los discos)
+    if ! docker inspect -f '{{.State.Running}}' node1 \
+         2>/dev/null | grep -q true; then
+        touch /run/rhce-lab-fresh 2>/dev/null || true
+    fi
     prepare_local_env
     setup_docker_dns "$DNS_CONFIG"
     echo -e "${GREEN}[+] Levantando laboratorio (Construyendo imágenes)...${NC}"

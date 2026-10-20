@@ -45,6 +45,20 @@ _loop_on_host() {
     [ -e "/sys/block/$1" ]
 }
 
+# FIX12e: esperar a que fake-disks.service
+# adjunte el loop. En arranques frios tarda
+# unos segundos: sin esto el wipe falla en
+# silencio (el nodo /dev/loopN es estatico y
+# pasa el test -b aunque no haya dispositivo).
+_loop_wait() {
+    local dev="$1" i=0
+    while [ $i -lt 10 ] && ! _loop_on_host "$dev"; do
+        sleep 1
+        i=$((i+1))
+    done
+    _loop_on_host "$dev"
+}
+
 # ---------- filtro LVM por nodo ----------
 # FIX12d: escribe el conf COMPLETO (anti-udev del
 # original de la imagen + filtro por nodo). Sin
@@ -97,11 +111,16 @@ EOF
 
 # ---------- wipe por nodo ----------
 _lab_wipe_node() {
-    local node="$1" dev
+    local node="$1" dev try
     for dev in ${NODE_DISKS[$node]}; do
-        docker exec "$node" wipefs -a "/dev/$dev" \
-            >/dev/null 2>&1 \
-          && echo "  [OK] $node: /dev/$dev pristino"
+        for try in 1 2 3; do
+            if docker exec "$node" wipefs -a "/dev/$dev" \
+                >/dev/null 2>&1; then
+                echo "  [OK] $node: /dev/$dev pristino"
+                break
+            fi
+            sleep 1
+        done
     done
 }
 
@@ -120,6 +139,7 @@ lab_disks_finalize() {
         fi
         for dev in ${NODE_DISKS[$node]}; do
             img="$DISK_IMG_DIR/${node}-${dev}.img"
+            _loop_wait "$dev" || true
             if ! _dev_in_node "$node" "$dev"; then
                 if ! _loop_on_host "$dev"; then
                     mkdir -p "$DISK_IMG_DIR"
@@ -134,7 +154,8 @@ lab_disks_finalize() {
                    mknod /dev/$dev b 7 ${dev#loop}" \
                   >/dev/null 2>&1
             fi
-            if _dev_in_node "$node" "$dev"; then
+            if _dev_in_node "$node" "$dev" \
+               && _loop_on_host "$dev"; then
                 echo "  [OK] $node <- /dev/$dev"
             else
                 echo "  [!!] $node SIN /dev/$dev"
@@ -188,7 +209,8 @@ lab_doctor() {
     for node in node1 node2 node3; do
         _node_up "$node" || continue
         for dev in ${NODE_DISKS[$node]}; do
-            if _dev_in_node "$node" "$dev"; then
+            if _dev_in_node "$node" "$dev" \
+               && _loop_on_host "$dev"; then
                 fs=$(docker exec "$node" lsblk -ndo FSTYPE \
                      "/dev/$dev" 2>/dev/null)
                 echo "[OK] $node /dev/$dev (fstype='${fs:-vacio}')"
