@@ -46,7 +46,11 @@ _loop_on_host() {
 }
 
 # ---------- filtro LVM por nodo ----------
-# Cada nodo solo escanea SUS loops (+ md/luks locales).
+# FIX12d: escribe el conf COMPLETO (anti-udev del
+# original de la imagen + filtro por nodo). Sin
+# udev_sync=0 / udev_rules=0 / obtain_device_list_
+# from_udev=0, lvcreate aborta con "not found:
+# device not cleared" (en el pod no hay udev).
 _lab_lvm_filter() {
     local node="$1" re="" dev tmp
     for dev in ${NODE_DISKS[$node]}; do
@@ -55,7 +59,20 @@ _lab_lvm_filter() {
     re="${re%|}"
     tmp="/tmp/lvmlocal.$node.conf"
     cat > "$tmp" <<EOF
+# ==========================================
+#  RHCE LAB - Override LVM local (por nodo)
+#  = anti-udev del original de la imagen +
+#    filtro que aisla los discos DE CADA nodo
+# ==========================================
 devices {
+    obtain_device_list_from_udev = 0
+    use_devicesfile = 0
+    filter = [
+        "a[/dev/loop(${re})\$]",
+        "a[/dev/md]",
+        "a[/dev/mapper/luks-]",
+        "r[.*]"
+    ]
     global_filter = [
         "a[/dev/loop(${re})\$]",
         "a[/dev/md]",
@@ -63,13 +80,22 @@ devices {
         "r[.*]"
     ]
 }
+
+global {
+    use_lvmetad = 0
+}
+
+activation {
+    udev_sync = 0
+    udev_rules = 0
+}
 EOF
     docker exec "$node" mkdir -p /etc/lvm 2>/dev/null
     docker cp "$tmp" "$node:/etc/lvm/lvmlocal.conf" 2>/dev/null
     rm -f "$tmp"
 }
 
-# ---------- wipe prístino por nodo ----------
+# ---------- wipe por nodo ----------
 _lab_wipe_node() {
     local node="$1" dev
     for dev in ${NODE_DISKS[$node]}; do
