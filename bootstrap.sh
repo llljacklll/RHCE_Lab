@@ -1,68 +1,49 @@
 #!/usr/bin/env bash
 # ============================================================
-# bootstrap.sh — MV recién restaurada → lab listo "de primera"
+#  RHCE_Lab — bootstrap.sh (v1.3.1)
+#  La promesa del README: MV recién restaurada de CUALQUIER
+#  snapshot → TODO listo en un solo comando.
 #
-#   bash bootstrap.sh
+#  Cadena:
+#    [1/5] dependencias del host (vm_bootstrap si falta algo)
+#    [2/5] git: sanear el árbol y alinear con GitHub
+#    [3/5] lab.sh up   [4/5] lab.sh doctor   [5/5] resumen
 #
-#   1. docker instalado y activo (si faltaba)
-#   2. repo actualizado (si hay red)
-#   3. lab.sh up  → contenedores + discos + filtro LVM + ssh
-#   4. lab.sh doctor → resumen de estado
-#
-#   Nota: el wipe de discos ocurre DENTRO de lab.sh up
-#   (arranque fresh). Restore de MV + bootstrap = lab prístino.
+#  Filosofía DR: GitHub es la única fuente de verdad.
+#  Un snapshot puede traer el árbol "sucio" (cambios locales sin
+#  commit, restos de iteraciones viejas). pull --ff-only se niega
+#  a pisarlos POR DISEÑO, así que aquí sanemos ANTES:
+#  fetch + reset --hard origin/main + clean.
+#  Ningún snapshot, por sucio que sea, vuelve a bloquear el DR.
 # ============================================================
-set -u
-LAB_DIR=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+set -euo pipefail
+cd "$(dirname "$0")"
 
-step() { echo -e "\n=== $* ==="; }
-ok()   { echo "  [OK] $*"; }
-warn() { echo "  [!!] $*"; }
-
-step "1/4 Docker"
-if command -v docker >/dev/null 2>&1; then
-    ok "docker presente: $(docker --version 2>/dev/null)"
+echo "== [1/5] Dependencias del host =="
+if ! command -v docker >/dev/null 2>&1 \
+   || ! docker compose version >/dev/null 2>&1 \
+   || [ ! -e /dev/loop-control ]; then
+    echo "[!] Faltan dependencias -> ejecutando scripts/vm_bootstrap.sh"
+    bash scripts/vm_bootstrap.sh
 else
-    warn "docker no encontrado, instalando..."
-    if command -v dnf >/dev/null 2>&1; then
-        dnf -y install docker-ce 2>/dev/null \
-          || dnf -y install moby-engine 2>/dev/null \
-          || dnf -y install docker
-    elif command -v apt-get >/dev/null 2>&1; then
-        apt-get update && apt-get -y install docker.io
-    else
-        warn "no se detecto gestor de paquetes (dnf/apt)"
-    fi
-fi
-systemctl enable --now docker 2>/dev/null \
-  || service docker start 2>/dev/null || true
-if docker info >/dev/null 2>&1; then
-    ok "docker daemon activo"
-else
-    warn "docker daemon NO responde (revisa y relanza)"
-    exit 1
+    echo "[OK] docker + compose + loop-control presentes"
 fi
 
-step "2/4 Repo"
-if [ -d "$LAB_DIR/.git" ]; then
-    ok "repo en $LAB_DIR"
-    git -C "$LAB_DIR" pull --ff-only >/dev/null 2>&1 \
-      && ok "actualizado a $(git -C "$LAB_DIR" \
-             rev-parse --short HEAD)" \
-      || warn "sin actualizar (sin red o divergencia) — sigo"
-else
-    warn "$LAB_DIR no es un clone git — sigo igualmente"
-fi
+echo "== [2/5] Git: sanear árbol y alinear con GitHub =="
+echo "-- cambios locales (se descartan; el remoto manda):"
+git status --short | head -20 || true
+git fetch origin
+git reset --hard origin/main
+git clean -qfd
+echo "-- alineado con:"
+git log --oneline -1
 
-step "3/4 Levantando el laboratorio (lab.sh up)"
-[ -x "$LAB_DIR/lab.sh" ] || chmod +x "$LAB_DIR/lab.sh"
-"$LAB_DIR/lab.sh" up || { warn "lab.sh up fallo"; exit 1; }
+echo "== [3/5] Levantando el laboratorio =="
+./lab.sh up
 
-step "4/4 Doctor"
-"$LAB_DIR/lab.sh" doctor || true
+echo "== [4/5] Doctor =="
+./lab.sh doctor
 
-echo
-echo "=== LISTO ==================================="
-echo "  entrar al nodo control:  $LAB_DIR/lab.sh shell"
-echo "  autoarranque con la MV:  $LAB_DIR/lab.sh autostart"
-echo "=============================================="
+echo "== [5/5] Resumen =="
+./lab.sh | grep -E 'Version|Status|Nodes' || true
+echo "[DONE] bootstrap completo. Laboratorio DR operativo."
