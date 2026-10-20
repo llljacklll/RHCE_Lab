@@ -109,3 +109,42 @@ tasks:
       - type: cron
         name: "/usr/local/bin/backup.sh"
         path: root
+
+  # ================= TASK PACK #2 (v1.3.0) =================
+  # SELinux fino: valida la REGLA fcontext a nivel de policy
+  # (semanage), no el xattr del runtime. El alumno puede usar
+  # community.general.sefcontext (instalada en la imagen) o
+  # command/shell con semanage fcontext -a.
+  - id: medium_fcontext_web
+    difficulty: medium
+    description: >
+      SELinux: crea el directorio /web con un fichero index.html
+      dentro. Añade la regla de contexto para que /web y todo su
+      contenido queden etiquetados como httpd_sys_content_t,
+      usando la spec /web(/.*)? y aplicando restorecon después
+      para relabelar.
+    checks:
+      - task_id: medium_fcontext_web
+        type: selinux_fcontext
+        name: httpd_sys_content_t
+        path: "/web(/.*)?"
+
+  # Block/rescue/always: el pilar de "manejo de errores" que
+  # cae siempre en el EX294. La corrección valida ESTADO en los
+  # 3 nodos + estructura del playbook en el control.
+  - id: hard_block_rescue
+    difficulty: hard
+    description: >
+      Ansible avanzado: en el nodo control crea el playbook
+      /home/ansible/block_rescue.yml que use block, rescue y
+      always contra TODOS los nodos gestionados. El block
+      intenta instalar el paquete paquete-fantasma (no existe
+      y debe fallar). El rescue instala el paquete tree en su
+      lugar. El always crea el fichero /tmp/block_ok en cada
+      nodo con el modulo file en estado touch. Ejecuta el
+      playbook con ansible-playbook antes de corregir.
+    checks:
+      - task_id: hard_block_rescue
+        type: block_rescue
+        name: tree
+        path: /tmp/block_ok
