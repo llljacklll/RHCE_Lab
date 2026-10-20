@@ -41,6 +41,7 @@ RUN dnf install -y \
     parted \
     cronie \
     policycoreutils-python-utils \
+    selinux-policy-targeted \
     setools-console \
     net-tools \
     sshpass \
