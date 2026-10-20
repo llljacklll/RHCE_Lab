@@ -114,7 +114,4 @@ COPY ansible.cfg /etc/ansible/ansible.cfg
 # LVM sin udev (contenedor): override anti-udev
 COPY lvmlocal.conf /etc/lvm/lvmlocal.conf
 ENV ANSIBLE_INVENTORY=/opt/ansible/inventory/hosts.ini
-# FIX12: horneado para autoarranque (sin dnf en runtime)
-RUN dnf install -y mdadm cryptsetup && dnf clean all
-RUN ssh-keygen -A || true
 CMD ["/usr/sbin/init"]

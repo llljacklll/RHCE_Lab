@@ -95,7 +95,7 @@ while [[ "$#" -gt 0 ]]; do
             shift
             ;;
         -h|--help) print_help ;;
-        up|down|start|stop|reset|shell|test)
+        up|down|start|stop|reset|shell|test|doctor|autostart)
             ACTION="$1"
             shift
             ;;
