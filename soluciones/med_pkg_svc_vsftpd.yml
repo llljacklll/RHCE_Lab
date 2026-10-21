@@ -1,0 +1,15 @@
+# Solución: med_pkg_svc_vsftpd (medium) — vsftpd instalado y activo
+- name: vsftpd instalado y habilitado y arrancado
+  hosts: all
+  become: true
+  tasks:
+    - name: Instalar vsftpd
+      ansible.builtin.package:
+        name: vsftpd
+        state: present
+
+    - name: Habilitar y arrancar vsftpd
+      ansible.builtin.service:
+        name: vsftpd
+        enabled: true
+        state: started

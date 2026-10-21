@@ -1,0 +1,10 @@
+# Solución: med_user_app (medium) — Crear el usuario 'appuser' con UID 2500
+- name: Usuario appuser con UID 2500
+  hosts: all
+  become: true
+  tasks:
+    - name: Crear el usuario appuser con UID 2500
+      ansible.builtin.user:
+        name: appuser
+        uid: 2500
+        state: present

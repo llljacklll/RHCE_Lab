@@ -1,0 +1,10 @@
+# Solución: rand_group_devs (easy) — Crear el grupo 'developers' con GID 3000
+- name: Grupo developers
+  hosts: all
+  become: true
+  tasks:
+    - name: Crear el grupo developers con GID 3000
+      ansible.builtin.group:
+        name: developers
+        gid: 3000
+        state: present

@@ -1,0 +1,9 @@
+# Solución: rand_user_webmaster (easy) — Crear el usuario 'webmaster'
+- name: Usuario webmaster
+  hosts: all
+  become: true
+  tasks:
+    - name: Crear el usuario webmaster
+      ansible.builtin.user:
+        name: webmaster
+        state: present

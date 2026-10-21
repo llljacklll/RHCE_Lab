@@ -1,0 +1,9 @@
+# Solución: rand_user_deploy (easy) — Crear el usuario 'deployer'
+- name: Usuario deployer
+  hosts: all
+  become: true
+  tasks:
+    - name: Crear el usuario deployer
+      ansible.builtin.user:
+        name: deployer
+        state: present

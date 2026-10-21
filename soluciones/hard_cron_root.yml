@@ -1,0 +1,19 @@
+# Solución: hard_cron_root (hard) — cron para root: '/usr/local/bin/backup.sh'
+- name: Entrada cron para root (+ stub de backup.sh)
+  hosts: all
+  become: true
+  tasks:
+    - name: Entrada '/usr/local/bin/backup.sh' a diario para root
+      ansible.builtin.cron:
+        name: backup_root
+        user: root
+        special_time: daily
+        job: "/usr/local/bin/backup.sh"
+
+    - name: Stub de backup.sh (la tarea es autocontenida)
+      ansible.builtin.copy:
+        dest: /usr/local/bin/backup.sh
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          exit 0

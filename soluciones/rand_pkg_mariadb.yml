@@ -1,0 +1,9 @@
+# Solución: rand_pkg_mariadb (easy) — Instalar mariadb-server
+- name: Instalar mariadb-server
+  hosts: all
+  become: true
+  tasks:
+    - name: Instalar el paquete mariadb-server
+      ansible.builtin.package:
+        name: mariadb-server
+        state: present

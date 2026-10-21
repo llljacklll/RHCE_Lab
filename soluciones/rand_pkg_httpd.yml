@@ -1,0 +1,9 @@
+# Solución: rand_pkg_httpd (easy) — Instalar el servidor web httpd
+- name: Instalar httpd
+  hosts: all
+  become: true
+  tasks:
+    - name: Instalar el paquete httpd
+      ansible.builtin.package:
+        name: httpd
+        state: present

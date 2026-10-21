@@ -1,0 +1,16 @@
+# Solución: hard_lvm_vg (hard) — VG vg_<nodo> en el disco extra del nodo
+# (device-mapper es GLOBAL al kernel: el nombre del VG debe ser ÚNICO por nodo)
+- name: VG vg_<nodo> sobre el disco extra
+  hosts: all
+  become: true
+  vars:
+    vg_nombre: "vg_{{ inventory_hostname }}"
+    disco_extra:
+      node1: /dev/loop0
+      node2: /dev/loop2
+      node3: /dev/loop4
+  tasks:
+    - name: VG vg_<nodo> en el disco extra
+      community.general.lvg:
+        vg: "{{ vg_nombre }}"
+        pvs: "{{ disco_extra[inventory_hostname] }}"

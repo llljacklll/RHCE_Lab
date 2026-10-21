@@ -1,0 +1,26 @@
+# Solución: medium_fcontext_web (medium) — /web + regla fcontext + restorecon
+- name: SELinux fcontext para /web
+  hosts: all
+  become: true
+  tasks:
+    - name: Directorio /web
+      ansible.builtin.file:
+        path: /web
+        state: directory
+        mode: "0755"
+
+    - name: index.html de prueba
+      ansible.builtin.copy:
+        dest: /web/index.html
+        content: "hola"
+
+    - name: Regla fcontext '/web(/.*)?' -> httpd_sys_content_t
+      community.general.sefcontext:
+        target: '/web(/.*)?'
+        setype: httpd_sys_content_t
+        state: present
+
+    - name: Relabel con restorecon (como pide el enunciado)
+      ansible.builtin.command:
+        cmd: restorecon -R /web
+      changed_when: false

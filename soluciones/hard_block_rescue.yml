@@ -1,0 +1,25 @@
+# ============================================================
+#  SOLUCIÓN MODELO — hard_block_rescue (v1.3.0)
+#  Va en el control como /home/ansible/block_rescue.yml
+#  Es también el play de prueba para el checker.
+# ============================================================
+- name: Bloque con rescate y siempre
+  hosts: all
+  become: true
+  tasks:
+    - block:
+        - name: Intento condenado a fallar
+          ansible.builtin.dnf:
+            name: paquete-fantasma
+            state: present
+      rescue:
+        - name: Plan B cuando el paquete no existe
+          ansible.builtin.dnf:
+            name: tree
+            state: present
+      always:
+        - name: Marcador de ejecucion en cada nodo
+          ansible.builtin.file:
+            path: /tmp/block_ok
+            state: touch
+            mode: "0644"

@@ -1,0 +1,9 @@
+# Solución: rand_pkg_vsftpd (easy) — Instalar el servidor FTP vsftpd
+- name: Instalar vsftpd
+  hosts: all
+  become: true
+  tasks:
+    - name: Instalar el paquete vsftpd
+      ansible.builtin.package:
+        name: vsftpd
+        state: present

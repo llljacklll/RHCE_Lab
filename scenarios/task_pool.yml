@@ -123,7 +123,7 @@ tasks:
   # command/shell con semanage fcontext -a.
   - id: medium_fcontext_web
     difficulty: medium
-    description: >
+    description: >-
       SELinux: crea el directorio /web con un fichero index.html
       dentro. Añade la regla de contexto para que /web y todo su
       contenido queden etiquetados como httpd_sys_content_t,
@@ -140,7 +140,7 @@ tasks:
   # 3 nodos + estructura del playbook en el control.
   - id: hard_block_rescue
     difficulty: hard
-    description: >
+    description: >-
       Ansible avanzado: en el nodo control crea el playbook
       /home/ansible/block_rescue.yml que use block, rescue y
       always contra TODOS los nodos gestionados. El block

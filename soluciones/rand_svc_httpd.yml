@@ -1,0 +1,15 @@
+# Solución: rand_svc_httpd (easy) — Habilitar y arrancar el servicio httpd
+- name: Servicio httpd habilitado y arrancado
+  hosts: all
+  become: true
+  tasks:
+    - name: El paquete antes del servicio (la tarea es autocontenida)
+      ansible.builtin.package:
+        name: httpd
+        state: present
+
+    - name: Habilitar y arrancar httpd
+      ansible.builtin.service:
+        name: httpd
+        enabled: true
+        state: started

@@ -1,0 +1,11 @@
+# Solución: hard_cron (hard) — cron para ansible: '/usr/bin/echo backup'
+- name: Entrada cron para el usuario ansible
+  hosts: all
+  become: true
+  tasks:
+    - name: Entrada '/usr/bin/echo backup' a diario para ansible
+      ansible.builtin.cron:
+        name: backup_echo
+        user: ansible
+        special_time: daily
+        job: "/usr/bin/echo backup"

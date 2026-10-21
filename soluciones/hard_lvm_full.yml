@@ -1,0 +1,34 @@
+# Solución: hard_lvm_full (hard) — VG por nodo + LV 300MB + ext4 + /mnt/datos
+- name: LVM completo (VG + LV lv_data 300m + ext4 + /mnt/datos)
+  hosts: all
+  become: true
+  vars:
+    vg_nombre: "vg_{{ inventory_hostname }}"
+    disco_extra:
+      node1: /dev/loop0
+      node2: /dev/loop2
+      node3: /dev/loop4
+  tasks:
+    - name: VG vg_<nodo> en el disco extra
+      community.general.lvg:
+        vg: "{{ vg_nombre }}"
+        pvs: "{{ disco_extra[inventory_hostname] }}"
+
+    - name: LV lv_data de 300m
+      community.general.lvol:
+        vg: "{{ vg_nombre }}"
+        lv: lv_data
+        size: 300m
+
+    - name: ext4 en el LV
+      community.general.filesystem:
+        fstype: ext4
+        dev: "/dev/{{ vg_nombre }}/lv_data"
+
+    - name: Montar /mnt/datos (persistente via fstab)
+      ansible.posix.mount:
+        path: /mnt/datos
+        src: "/dev/{{ vg_nombre }}/lv_data"
+        fstype: ext4
+        opts: defaults
+        state: mounted

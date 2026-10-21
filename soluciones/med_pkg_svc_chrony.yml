@@ -1,0 +1,15 @@
+# Solución: med_pkg_svc_chrony (medium) — chrony instalado y chronyd activo
+- name: chrony instalado y chronyd habilitado y arrancado
+  hosts: all
+  become: true
+  tasks:
+    - name: Instalar chrony
+      ansible.builtin.package:
+        name: chrony
+        state: present
+
+    - name: Habilitar y arrancar chronyd
+      ansible.builtin.service:
+        name: chronyd
+        enabled: true
+        state: started
