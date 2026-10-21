@@ -82,7 +82,7 @@ time_limit: $time_limit
 STATUSEOF
 
     # ---------- Mostrar el examen por pantalla ----------
-    clear
+    clear -x
     print_banner
     _print_exam_header "$difficulty" "$time_limit" "$title"
     _print_exam_tasks "$CURRENT_EXAM_FILE"
@@ -130,7 +130,7 @@ function _print_exam_tasks() {
 import yaml
 with open("$1") as f: d = yaml.safe_load(f)
 for t in d.get("tasks", []):
-    print("  *", t.get("description"))
+    print("  *", str(t.get("description") or "").rstrip())
 PYEOF2
 }
 
