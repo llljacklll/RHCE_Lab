@@ -1,15 +1,28 @@
 #!/bin/bash
 # ============================================================
-#  🧰 CORE/UTILS.SH — Utilidades comunes del motor
+#  core/utils.sh — utilidades comunes del motor
 # ============================================================
 #  RESPONSABILIDAD:
 #    Funciones de apoyo reutilizadas por el resto de módulos:
 #    estado de contenedores, validación de ficheros, preparación
 #    del entorno local y limpieza del estado de exámenes.
+#
+#  DEPENDENCIAS (sourceadas ANTES que este fichero):
+#    - ui/colors.sh ......... RED/GREEN/CYAN/YELLOW/NC
+#    - core/constants.sh .... INVENTORY_DIR, STATE_DIR, ficheros de estado
+#
+#  CONVENCIONES:
+#    - is_*      -> preguntas silenciosas: exit-code, sin output.
+#    - require_* -> precondiciones: fallan RUIDOSOSAMENTE (exit 1)
+#                   si la acción no puede continuar.
+#    - Aquí NO hay lógica de exámenes: solo se limpia su estado.
+#      La lógica vive en core/exam*.sh y core/grade.sh.
 # ============================================================
 
 # ------------------------------------------------------------
 # is_control_running → true si el contenedor 'control' está arriba
+# (grep "^control$": match EXACTO de nombre, que no cuelen
+#  'control2' ni 'xcontrol'; el espacio de nombres de docker es plano)
 # ------------------------------------------------------------
 function is_control_running() {
     docker ps --format '{{.Names}}' | grep -q "^control$"
@@ -17,6 +30,8 @@ function is_control_running() {
 
 # ------------------------------------------------------------
 # require_control_running → aborta si el laboratorio está caído
+# El mensaje usa $0 = cómo invocaste el lab ("./lab.sh"), así el
+# remedio que imprime siempre es literalmente ejecutable.
 # ------------------------------------------------------------
 function require_control_running() {
     if ! is_control_running; then
@@ -27,6 +42,8 @@ function require_control_running() {
 
 # ------------------------------------------------------------
 # require_file_exists <ruta> [mensaje_error]
+# ${error_msg:-...}: si no se pasa mensaje, se fabrica uno con la
+# propia ruta. Guarda típico antes de leer YAML de examen/vault.
 # ------------------------------------------------------------
 function require_file_exists() {
     local filepath="$1"
@@ -39,8 +56,13 @@ function require_file_exists() {
 
 # ------------------------------------------------------------
 # prepare_local_env → genera el inventario local si no existe
-# (defensivo: el repo ya trae hosts.ini, pero blindamos el caso
-#  de un alumno que lo borre)
+# DEFENSIVO: el repo ya trae ansible/inventory/hosts.ini; esto es la
+# red de seguridad para el alumno que lo borre (sin inventario no hay
+# lab). Las IPs fijas tienen que casar con la red que define
+# docker/docker-compose.yml — si cambia la red, cambia esto también.
+# Credenciales ansible/ansible en claro: es un lab LOCAL de práctica,
+# no producción (en producción, Ansible Vault y claves).
+# El heredoc va con 'EOF' entrecomillado: nada se expande dentro.
 # ------------------------------------------------------------
 function prepare_local_env() {
     echo -e "${YELLOW}[!] Verificando entorno local de Ansible...${NC}"
@@ -65,6 +87,7 @@ EOF
 
 # ------------------------------------------------------------
 # ensure_state_dir → garantiza los directorios de estado
+# (mkdir -p es idempotente: llámalo cuantas veces quieras)
 # ------------------------------------------------------------
 function ensure_state_dir() {
     mkdir -p "$STATE_DIR"
@@ -73,7 +96,12 @@ function ensure_state_dir() {
 
 # ------------------------------------------------------------
 # reset_exam_state → limpia TODO el estado de un examen:
-# mata el cronómetro si vive y borra los YAML de sesión
+# mata el cronómetro si vive y borra los YAML de sesión.
+# QUIÉN LO LLAMA: lab.sh en 'down' (un examen a medias no debe
+# sobrevivir a la destrucción del lab) y grade tras una expiración
+# (cronómetro muerto + ficheros fuera = no queda rastro del intento).
+# 'kill ... 2>/dev/null': si el PID ya murió (VM reiniciada, etc.)
+# el error se silencia y limpiamos igualmente el pidfile.
 # ------------------------------------------------------------
 function reset_exam_state() {
     if [ -f "$TIMER_PID_FILE" ]; then

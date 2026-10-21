@@ -1,17 +1,22 @@
 #!/bin/bash
 # ============================================================
-#  🐳 CORE/DOCKER.SH — Ciclo de vida del laboratorio
+#  core/docker.sh — ciclo de vida del laboratorio
 # ============================================================
 #  RESPONSABILIDAD:
 #    Construir, levantar, parar, destruir y entrar en los
 #    contenedores del laboratorio (control + node1..node3).
 #
-#  FUNCIONES (llamadas desde lab.sh):
+#  FUNCIONES (llamadas desde el dispatch de lab.sh):
 #    lab_up / lab_start / lab_stop / lab_down / lab_reset / lab_shell
 #
-#  AUXILIARES:
+#  AUXILIARES (prefijo _ = interno de este fichero):
 #    setup_docker_dns, _wait_for_ssh, _setup_ssh_keys,
 #    _finalize_startup
+#
+#  FUERA DE AQUÍ:
+#    lab_doctor y lab_autostart viven en core/disks.sh (histórico),
+#    que se sourcea al final de este fichero. lab_disks_finalize y
+#    lab_disks_release (discos de las tareas LVM) también.
 #
 #  NOTA DE ESTILO:
 #    Este fichero usa líneas cortas a propósito: las líneas de
@@ -23,6 +28,14 @@
 # setup_docker_dns <"ip1,ip2"|"">
 #   ""       → elimina daemon.json y restaura el DNS del sistema
 #   ip1,ip2  → fuerza el DNS de Docker (redes corporativas)
+#
+# POR QUÉ EXISTE: docker incrusta el resolver en cada contenedor.
+# Sin daemon.json copia el del host; en redes corporativas con DNS
+# interno, eso hace que los contenedores no resuelvan los repos
+# (dnf falla y el lab no se construye). '--dns' lo fuerza globalmente.
+# CAMBIO GLOBAL: daemon.json afecta a TODO docker y reinicia el
+# daemon (los contenedores que estén corriendo se paran; el 'up'
+# posterior los recrea con el nuevo DNS).
 # ------------------------------------------------------------
 function setup_docker_dns() {
     local dns_string="$1"
@@ -48,6 +61,10 @@ function setup_docker_dns() {
     dns1=$(echo "$dns_string" | cut -d',' -f1)
     dns2=$(echo "$dns_string" | cut -d',' -f2)
 
+    # PENDIENTE (bug conocido): con una sola IP, dns2 queda vacío y el
+    # JSON sale como {"dns": ["1.1.1.1", ""]}, que el daemon puede
+    # rechazar. Arreglo propuesto en su momento: generar el array solo
+    # con las IPs presentes. NO se toca en esta pasada de comentarios.
     echo -e "${YELLOW}[!] Configurando DNS forzado de Docker (${dns1}, ${dns2})...${NC}"
     sudo mkdir -p /etc/docker
     echo "{\"dns\": [\"${dns1}\", \"${dns2}\"]}" | sudo tee /etc/docker/daemon.json > /dev/null
@@ -58,7 +75,10 @@ function setup_docker_dns() {
 
 # ------------------------------------------------------------
 # _wait_for_ssh <nodo>
-#   Espera (máx 30s) a que systemd tenga sshd activo en el nodo
+#   Espera (máx 30s) a que systemd tenga sshd activo en el nodo.
+#   Los contenedores del lab arrancan systemd REAL, así que
+#   systemctl funciona dentro como en una máquina física. sshd
+#   tarda unos segundos en el primer boot (genera host keys).
 # ------------------------------------------------------------
 function _wait_for_ssh() {
     local node="$1"
@@ -76,8 +96,13 @@ function _wait_for_ssh() {
 
 # ------------------------------------------------------------
 # _setup_ssh_keys
-#   Genera la clave RSA de root en 'control' y la reparte a los
-#   3 nodos para que Ansible conecte sin contraseña.
+#   Deja a 'control' conectando SIN contraseña a los 3 nodos:
+#     1) espera sshd en los 4 contenedores,
+#     2) genera la clave RSA de root en control (si no existe),
+#     3) ssh-copy-id al usuario 'ansible' de cada nodo, con reintentos.
+#   La clave va a authorized_keys del usuario ansible: el inventario
+#   (hosts.ini) trae ansible_password=ansible como fallback, pero con
+#   la clave Ansible no pide password en cada conexión.
 # ------------------------------------------------------------
 function _setup_ssh_keys() {
     echo -e "${CYAN}[+] Configurando claves SSH entre nodos...${NC}"
@@ -93,10 +118,16 @@ function _setup_ssh_keys() {
     done
 
     # 2) Generar la clave RSA de root en el control (si no existe)
+    #    -N "" = sin passphrase; -q silencia la salida de ssh-keygen.
     docker exec control bash -c \
         'if [ ! -f /root/.ssh/id_rsa ]; then ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa -q; fi'
 
     # 3) Copiar la clave pública a cada nodo (con reintentos)
+    #    sshpass -p ansible: el password de práctica del lab.
+    #    StrictHostKeyChecking=no: no pedir confirmación de fingerprint
+    #    (los contenedores se recrean y sus host keys cambian siempre).
+    #    &>/dev/null: silencia TODO, incluido el prompt; solo importa
+    #    el exit-code, que alimenta los reintentos (20 x 1s).
     for node in node1 node2 node3; do
         local max_retries=20
         local count=0
@@ -122,11 +153,21 @@ function _setup_ssh_keys() {
 
 # ------------------------------------------------------------
 # _finalize_startup
-#   Últimos pasos tras levantar: claves SSH + tabla de
-#   contenedores + ping de Ansible a los 3 nodos.
+#   Últimos pasos tras levantar, en orden:
+#     1) lab_disks_finalize (core/disks.sh): crea/recupera los loops
+#        de LVM por nodo + filtro. '|| true': un problema de discos
+#        NO debe tumbar el arranque (se diagnostica con 'doctor').
+#     2) esperar systemd y repartir claves SSH
+#     3) nota firewalld offline (portable en WSL2/VM: el paquete
+#        está, el servicio no se gestiona en contenedores)
+#     4) tabla de contenedores (compose ps) y ping de Ansible
+# El ping corre DENTRO de control: -w /opt/ansible = cwd del
+# contenedor (la carpeta ansible/ del repo montada); el ping es
+# INFORMATIVO, no aborta si falla — el alumno ve el unreachable
+# y puede reintentar. 2>/dev/null silencia warnings de SSH.
 # ------------------------------------------------------------
 function _finalize_startup() {
-    # FIX12: discos + filtro LVM por nodo
+    # discos + filtro LVM por nodo (implementación en core/disks.sh)
     lab_disks_finalize || true
     echo -e "${YELLOW}[!] Esperando a que systemd arranque los servicios...${NC}"
     _setup_ssh_keys
@@ -144,11 +185,16 @@ function _finalize_startup() {
 
 # ------------------------------------------------------------
 # lab_up → construir imágenes (--build) y levantar TODO
+# MARCADOR "FRESH" (clave para los discos del alumno):
+#   /run/rhce-lab-fresh le dice a core/disks.sh que el arranque es
+#   fresco y puede RE-CREAR (wipe) los loops. /run es tmpfs: el
+#   marcador muere solo al reiniciar la MV. La regla es sutil:
+#   si el lab YA está corriendo (up/bootstrap sobre lab arriba) NO se
+#   marca fresh → los discos del alumno NO se borran. Tras un down o
+#   un reboot de la MV, node1 no existe/no corre → marcador → wipe.
+#   Se consulta node1 como testigo: si node1 corre, el lab corre.
 # ------------------------------------------------------------
 function lab_up() {
-    # FIX12e: fresh SOLO si el lab NO estaba ya arriba.
-    # (up/bootstrap sobre lab corriendo = NO borrar
-    #  el trabajo del alumno en los discos)
     if ! docker inspect -f '{{.State.Running}}' node1 \
          2>/dev/null | grep -q true; then
         touch /run/rhce-lab-fresh 2>/dev/null || true
@@ -163,6 +209,9 @@ function lab_up() {
 
 # ------------------------------------------------------------
 # lab_start → levantar SIN recompilar (rápido)
+# No gestiona el marcador fresh: solo lab_up decide qué es "fresco".
+# Útil para reactivar tras un 'stop' o un reinicio de la MV con las
+# imágenes ya construidas.
 # ------------------------------------------------------------
 function lab_start() {
     echo -e "${GREEN}[+] Levantando laboratorio (sin recompilar)...${NC}"
@@ -173,6 +222,8 @@ function lab_start() {
 
 # ------------------------------------------------------------
 # lab_stop → detener contenedores (conserva imágenes y datos)
+# 'compose ps -q' vacío = no hay NADA corriendo de este proyecto.
+# stop ≠ down: conserva contenedores, volúmenes e imágenes.
 # ------------------------------------------------------------
 function lab_stop() {
     cd "$DOCKER_DIR" || exit 1
@@ -186,8 +237,17 @@ function lab_stop() {
 }
 
 # ------------------------------------------------------------
-# lab_down → destruir contenedores, red, volúmenes e imágenes
-#   (usa ps -aq para detectar también contenedores parados)
+# lab_down → destruir TODO: contenedores, red, volúmenes e imágenes
+# 'ps -aq' (con -a) para detectar también contenedores PARADOS:
+# tras un 'stop' el proyecto existe aunque no corra nada, y down
+# debe limpiarlo igualmente.
+#   -v            : borra volúmenes (¡los datos de dentro!)
+#   --rmi all     : borra las imágenes del proyecto
+#   --remove-orphans: limpia contenedores sueltos de renombres antiguos
+# Después libera los loops del host (lab_disks_release): los loops
+# son GLOBALES al host; si quedan ocupados, el próximo arranque
+# recibiría loop6, loop7... y las tareas/checkers esperan los
+# números exactos loop0/2/4. '|| true': no bloquea la destrucción.
 # ------------------------------------------------------------
 function lab_down() {
     cd "$DOCKER_DIR" || exit 1
@@ -198,12 +258,14 @@ function lab_down() {
     echo -e "${YELLOW}[!] Destruyendo laboratorio (total: contenedores, red, volúmenes e imágenes)...${NC}"
     docker compose down -v --remove-orphans --rmi all
     echo -e "${GREEN}[+] Laboratorio destruido por completo.${NC}"
-    # FIX12: liberar loops (para que no se desplacen)
+    # liberar loops del host para que el próximo fresh reciba 0/2/4
     lab_disks_release || true
 }
 
 # ------------------------------------------------------------
 # lab_reset → regeneración limpia (down + up)
+# La vía soportada de "empezar de cero": down destruye todo y el up
+# posterior detecta arranque fresco → loops re-creados limpios.
 # ------------------------------------------------------------
 function lab_reset() {
     lab_down
@@ -213,6 +275,8 @@ function lab_reset() {
 
 # ------------------------------------------------------------
 # lab_shell → entrar interactivo al nodo control
+# '-it' = terminal interactiva (por eso solo tiene sentido desde
+# una consola; los scripts usan 'docker exec' sin -t).
 # ------------------------------------------------------------
 function lab_shell() {
     require_control_running
@@ -222,6 +286,15 @@ function lab_shell() {
     docker exec -it control bash
 }
 
-# FIX12: discos + doctor + autostart
+# ------------------------------------------------------------
+# CARGA TARDÍA de core/disks.sh (discos LVM + doctor + autostart)
+# lab_doctor y lab_autostart viven ahí (histórico). Cargarlo al FINAL
+# es seguro: bash resuelve las llamadas a funciones en tiempo de
+# EJECUCIÓN, y las funciones de arriba solo invocan lab_disks_*
+# cuando ya estará en memoria.
+# Doble fallback: sourceado desde lab.sh ($0 = raíz) vale la 1ª
+# ruta; en pruebas con otro cwd, la 2ª. '|| true': que la falta de
+# disks.sh no tumbe el resto del lab.
+# ------------------------------------------------------------
 source "$(dirname "$(readlink -f "$0")")/core/disks.sh" 2>/dev/null \
   || source core/disks.sh 2>/dev/null || true
