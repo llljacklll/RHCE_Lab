@@ -1,9 +1,24 @@
-# Solución: rand_pkg_vsftpd (easy) — Instalar el servidor FTP vsftpd
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_pkg_vsftpd            [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Instala el servidor FTP vsftpd en todos los nodos."
+#
+#  Mismo patrón y mismos argumentos que rand_pkg_httpd (allí está el
+#  comentario completo del porqué de cada opción): package genérico +
+#  state: present + become.
+#
+#  DETALLE FINO:
+#    - El paquete se llama 'vsftpd' ("very secure FTP daemon"), tal cual:
+#      'ftp' o 'ftp-server' NO existen como paquete en RHEL/AlmaLinux.
+#
+#  VALIDACIÓN: core/checkers/package.sh — vsftpd instalado en todos.
+# ============================================================================
 - name: Instalar vsftpd
   hosts: all
-  become: true
+  become: true              # instalar paquetes requiere root
+
   tasks:
     - name: Instalar el paquete vsftpd
       ansible.builtin.package:
         name: vsftpd
-        state: present
+        state: present       # idempotente: 2ª ejecución = ok, no changed

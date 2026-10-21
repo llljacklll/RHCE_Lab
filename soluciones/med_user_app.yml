@@ -1,10 +1,29 @@
-# Solución: med_user_app (medium) — Crear el usuario 'appuser' con UID 2500
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — med_user_app                [dificultad: medium]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea el usuario 'appuser' con UID 2500."
+#
+#  QUÉ PRACTICA (EX294):
+#    - ansible.builtin.user con UID FIJO: consistencia de cuentas entre
+#      nodos (imprescindible para NFS, ACLs o auditorías reales).
+#
+#  DETALLES FINOS:
+#    - UID explícito = idempotencia FUERTE: si 'appuser' existiera con
+#      otro UID, la tarea lo corrige. El checker valida UID == 2500:
+#      "que exista el usuario" NO basta.
+#    - Sin 'password:' la cuenta queda bloqueada (shadow en '*'): el
+#      enunciado solo exige existencia.
+#    - become: true: /etc/passwd y /etc/shadow son de root.
+#
+#  VALIDACIÓN: core/checkers/user.sh — UID 2500 exacto en todos los nodos.
+# ============================================================================
 - name: Usuario appuser con UID 2500
   hosts: all
   become: true
+
   tasks:
     - name: Crear el usuario appuser con UID 2500
       ansible.builtin.user:
         name: appuser
-        uid: 2500
-        state: present
+        uid: 2500             # fijo: el checker valida el UID exacto
+        state: present        # crear si falta; corrige UID si difiere

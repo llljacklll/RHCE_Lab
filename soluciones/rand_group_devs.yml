@@ -1,10 +1,27 @@
-# Solución: rand_group_devs (easy) — Crear el grupo 'developers' con GID 3000
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_group_devs             [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea el grupo 'developers' con GID 3000."
+#
+#  QUÉ PRACTICA (EX294):
+#    - ansible.builtin.group con GID FIJO.
+#
+#  DETALLES FINOS:
+#    - GID explícito = idempotencia FUERTE: si el grupo existiera con otro
+#      GID, esta tarea lo CORRIGE. El checker valida el GID exacto, no
+#      solo el nombre: "que exista el grupo" no basta si no es 3000.
+#    - Sin 'system: true': grupo normal de usuarios (no de sistema).
+#    - become: true: /etc/group y /etc/gshadow son de root.
+#
+#  VALIDACIÓN: core/checkers/group.sh — getent group developers -> GID 3000.
+# ============================================================================
 - name: Grupo developers
   hosts: all
   become: true
+
   tasks:
     - name: Crear el grupo developers con GID 3000
       ansible.builtin.group:
-        name: developers
-        gid: 3000
-        state: present
+        name: developers        # grupo normal (no de sistema)
+        gid: 3000              # fijo: el checker valida el GID exacto
+        state: present          # crear si falta; corrige GID si difiere

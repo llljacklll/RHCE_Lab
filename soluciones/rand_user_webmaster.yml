@@ -1,7 +1,22 @@
-# Solución: rand_user_webmaster (easy) — Crear el usuario 'webmaster'
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_user_webmaster         [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea el usuario 'webmaster' en todos los nodos."
+#
+#  Mismo patrón y mismos argumentos que rand_user_deploy (allí está el
+#  comentario completo): ansible.builtin.user + state: present + become.
+#
+#  DETALLE FINO:
+#    - Distinto NOMBRE de usuario, MISMA técnica: el banco del lab genera
+#      nombres aleatorios (webmaster, deployer, ...) a propósito — que se
+#      memorice el PATRÓN, no la respuesta.
+#
+#  VALIDACIÓN: core/checkers/user.sh — 'id webmaster' exit 0 en todos.
+# ============================================================================
 - name: Usuario webmaster
   hosts: all
   become: true
+
   tasks:
     - name: Crear el usuario webmaster
       ansible.builtin.user:

@@ -1,15 +1,39 @@
-# Solución: rand_svc_httpd (easy) — Habilitar y arrancar el servicio httpd
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_svc_httpd              [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Habilita y arranca el servicio httpd en todos los nodos."
+#
+#  QUÉ PRACTICA (EX294):
+#    - Encadenar package -> service: el orden natural de dependencias.
+#    - 'enabled: true' + 'state: started': los DOS sentidos de "activo"
+#      (arrancará en cada boot Y corre ahora mismo).
+#
+#  DETALLES FINOS:
+#    - enabled: true   -> systemctl enable   (persistente: boot)
+#    - state: started -> systemctl start    (inmediato: ahora)
+#    - El paquete va PRIMERO: un servicio no arranca si su binario no
+#      existe. La tarea es AUTOCONTENIDA aunque el enunciado asuma el
+#      paquete de una tarea anterior del examen.
+#    - NO hace falta handler+notify: el enunciado no pide "reiniciar si
+#      cambia la configuración" (ese es el caso típico de handlers).
+#
+#  VALIDACIÓN: core/checkers/service.sh — systemctl is-active E is-enabled
+#  httpd en todos los nodos.
+# ============================================================================
 - name: Servicio httpd habilitado y arrancado
   hosts: all
   become: true
+
   tasks:
+    # Paso 1: el binario antes del servicio (autocontención de la tarea)
     - name: El paquete antes del servicio (la tarea es autocontenida)
       ansible.builtin.package:
         name: httpd
         state: present
 
+    # Paso 2: "activo" = enabled (persistente) + started (inmediato)
     - name: Habilitar y arrancar httpd
       ansible.builtin.service:
         name: httpd
-        enabled: true
-        state: started
+        enabled: true         # arrancará solo en cada boot
+        state: started        # ya está corriendo; idempotente

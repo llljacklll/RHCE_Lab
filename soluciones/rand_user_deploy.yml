@@ -1,9 +1,29 @@
-# Solución: rand_user_deploy (easy) — Crear el usuario 'deployer'
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_user_deploy            [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea el usuario 'deployer' en todos los nodos."
+#
+#  QUÉ PRACTICA (EX294):
+#    - ansible.builtin.user: gestión declarativa de cuentas locales.
+#    - Idempotencia: 'state: present' crea la cuenta si falta y NO la
+#      duplica ni la altera en re-ejecuciones.
+#
+#  DETALLES FINOS:
+#    - El enunciado NO fija UID -> no se pone 'uid:' y el sistema asigna
+#      el siguiente libre. (Si pidiera UID concreto: 'uid: N', como en
+#      med_user_app.yml.)
+#    - Sin 'password:' la cuenta queda bloqueada en shadow: suficiente,
+#      porque el enunciado solo exige que EXISTA.
+#    - become: true: crear usuarios edita /etc/passwd y /etc/shadow.
+#
+#  VALIDACIÓN: core/checkers/user.sh — 'id deployer' exit 0 en todos.
+# ============================================================================
 - name: Usuario deployer
   hosts: all
-  become: true
+  become: true               # /etc/passwd y /etc/shadow son de root
+
   tasks:
     - name: Crear el usuario deployer
       ansible.builtin.user:
-        name: deployer
-        state: present
+        name: deployer         # cuenta local en cada nodo
+        state: present         # crear si falta; no tocar si ya existe

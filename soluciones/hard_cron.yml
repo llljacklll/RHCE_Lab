@@ -1,11 +1,36 @@
-# Solución: hard_cron (hard) — cron para ansible: '/usr/bin/echo backup'
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — hard_cron                     [dificultad: hard]
+# ----------------------------------------------------------------------------
+#  TAREA: "Añade una entrada cron diaria para el usuario 'ansible' que
+#  ejecute '/usr/bin/echo backup'."
+#
+#  QUÉ PRACTICA (EX294):
+#    - ansible.builtin.cron con 'user': escribe en el crontab DE ESE
+#      usuario (/var/spool/cron/<user>), no en /etc/cron.d.
+#    - special_time: la forma limpia de "@daily" sin teclear "0 0 * * *".
+#
+#  DETALLES FINOS:
+#    - 'user: ansible' es determinante: el checker lee ESE crontab, no el
+#      de root. "Para el usuario X" en el enunciado = parámetro user.
+#    - 'name: backup_echo' es el MANEJADOR de la entrada: Ansible marca la
+#      línea con un comentario (#Ansible: backup_echo) y la EDITA en
+#      re-ejecuciones en vez de duplicarla (idempotencia real de cron).
+#    - special_time: daily genera '@daily': casa exacto con "a diario".
+#      Si el enunciado pidiera una hora concreta: minute/hour explícitos.
+#    - Ruta ABSOLUTA '/usr/bin/echo': cron arranca con PATH mínimo; y si
+#      el enunciado da la cadena exacta del job, cópiala LITERAL.
+#
+#  VALIDACIÓN: core/checkers/cron.sh — la línea del job aparece en el
+#  crontab del usuario 'ansible' de cada nodo.
+# ============================================================================
 - name: Entrada cron para el usuario ansible
   hosts: all
-  become: true
+  become: true             # el módulo escribe en /var/spool/cron (root)
+
   tasks:
     - name: Entrada '/usr/bin/echo backup' a diario para ansible
       ansible.builtin.cron:
-        name: backup_echo
-        user: ansible
-        special_time: daily
-        job: "/usr/bin/echo backup"
+        name: backup_echo          # identificador: permite editar, no duplicar
+        user: ansible              # crontab DEL usuario ansible
+        special_time: daily        # @daily = a diario
+        job: "/usr/bin/echo backup"   # cadena literal del enunciado

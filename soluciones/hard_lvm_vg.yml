@@ -1,16 +1,47 @@
-# Solución: hard_lvm_vg (hard) — VG vg_<nodo> en el disco extra del nodo
-# (device-mapper es GLOBAL al kernel: el nombre del VG debe ser ÚNICO por nodo)
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — hard_lvm_vg                  [dificultad: hard]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea un Volume Group llamado vg_<nodo> sobre el disco extra de
+#  cada nodo" (node1 -> vg_node1 sobre /dev/loop0, etc.).
+#
+#  QUÉ PRACTICA (EX294):
+#    - community.general.lvg: gestión declarativa de Volume Groups.
+#    - Mapeo por nodo con dict indexado por inventory_hostname: UN solo
+#      playbook, distinto dispositivo por nodo. Es LA técnica para
+#      "cada nodo usa su propio disco".
+#
+#  MAPEO DE DISCOS EXTRA (loops creados por el lab en el arranque):
+#      node1 -> /dev/loop0    node2 -> /dev/loop2    node3 -> /dev/loop4
+#
+#  ADVERTENCIA CRÍTICA (por qué el VG lleva el nombre del nodo):
+#    - device-mapper y LVM son GLOBALES al KERNEL del host: los contenedores
+#      comparten kernel, así que los VG de node1/2/3 viven en el MISMO
+#      espacio de nombres de device-mapper. Dos VG con el mismo nombre en
+#      nodos distintos CHOCARÍAN (renombre automático o fallo de creación).
+#      vg_<nodo> es único por diseño: por eso el enunciado lo pide así.
+#
+#  DETALLES FINOS:
+#    - lvg se encarga del pvcreate si el disco aún no es PV.
+#    - Idempotente: si el VG ya existe, no lo recrea ni toca sus PVs.
+#    - become: true: LVM requiere root en el nodo.
+#
+#  VALIDACIÓN: core/checkers/lvm.sh — 'vgs' muestra vg_<nodo> en cada nodo.
+# ============================================================================
 - name: VG vg_<nodo> sobre el disco extra
   hosts: all
   become: true
+
   vars:
+    # Nombre de VG derivado del nodo: vg_node1, vg_node2, vg_node3...
     vg_nombre: "vg_{{ inventory_hostname }}"
+    # Disco extra de cada nodo (mapeado por el lab en el arranque)
     disco_extra:
       node1: /dev/loop0
       node2: /dev/loop2
       node3: /dev/loop4
+
   tasks:
     - name: VG vg_<nodo> en el disco extra
       community.general.lvg:
         vg: "{{ vg_nombre }}"
-        pvs: "{{ disco_extra[inventory_hostname] }}"
+        pvs: "{{ disco_extra[inventory_hostname] }}"   # lookup del disco por nodo

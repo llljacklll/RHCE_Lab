@@ -1,13 +1,46 @@
-# Solución: hard_lvm_full (hard) — VG por nodo + LV 300MB + ext4 + /mnt/datos
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — hard_lvm_full                 [dificultad: hard]
+# ----------------------------------------------------------------------------
+#  TAREA: "En cada nodo: VG vg_<nodo> en el disco extra, LV 'lv_data' de
+#  300 MB, filesystem ext4 y montaje persistente en /mnt/datos."
+#
+#  QUÉ PRACTICA (EX294):
+#    - La CADENA LVM COMPLETA: lvg -> lvol -> filesystem -> mount.
+#      El orden NO es estético: cada paso consume lo que crea el anterior.
+#
+#  CADENA, PASO A PASO:
+#    1) lvg        : crea el VG (y el PV si hace falta) sobre el disco.
+#    2) lvol       : recorta el LV lv_data de 300m DENTRO del VG.
+#                    'size: 300m' = 300 MiB exactos.
+#    3) filesystem : mkfs.ext4 sobre /dev/<vg>/<lv>. Idempotente: NO
+#                    reformatea un dispositivo que ya tiene filesystem.
+#    4) mount      : state: mounted = montar AHORA + escribir /etc/fstab.
+#                    Es la clave del "que sobreviva al reinicio".
+#
+#  DETALLES FINOS:
+#    - mount y sus states (memorizar):
+#        mounted  = fstab + montado ya         <- lo que pide el examen
+#        present  = SOLO edita fstab (no monta ahora)
+#        unmounted= desmonta (deja fstab intacto)
+#    - El módulo mount crea el punto /mnt/datos si no existe: por eso no
+#      hace falta una tarea 'file: directory' previa.
+#    - La advertencia de unicidad de VGs (device-mapper global al kernel)
+#      aplica igual que en hard_lvm_vg: por eso vg_<nodo>.
+#
+#  VALIDACIÓN: core/checkers/{lvm,filesystem,mount}.sh — vgs, tipo de FS
+#  y punto de montaje con entrada en /etc/fstab en cada nodo.
+# ============================================================================
 - name: LVM completo (VG + LV lv_data 300m + ext4 + /mnt/datos)
   hosts: all
   become: true
+
   vars:
-    vg_nombre: "vg_{{ inventory_hostname }}"
-    disco_extra:
+    vg_nombre: "vg_{{ inventory_hostname }}"   # vg_node1, vg_node2, ...
+    disco_extra:                               # disco extra por nodo
       node1: /dev/loop0
       node2: /dev/loop2
       node3: /dev/loop4
+
   tasks:
     - name: VG vg_<nodo> en el disco extra
       community.general.lvg:
@@ -18,17 +51,17 @@
       community.general.lvol:
         vg: "{{ vg_nombre }}"
         lv: lv_data
-        size: 300m
+        size: 300m            # MiB exactos, como pide el enunciado
 
     - name: ext4 en el LV
       community.general.filesystem:
         fstype: ext4
-        dev: "/dev/{{ vg_nombre }}/lv_data"
+        dev: "/dev/{{ vg_nombre }}/lv_data"   # ruta del LV recién creado
 
     - name: Montar /mnt/datos (persistente via fstab)
       ansible.posix.mount:
-        path: /mnt/datos
+        path: /mnt/datos                      # el módulo lo crea si no existe
         src: "/dev/{{ vg_nombre }}/lv_data"
         fstype: ext4
-        opts: defaults
-        state: mounted
+        opts: defaults                        # rw,suid,dev,exec,auto,...
+        state: mounted                        # fstab + montado ahora

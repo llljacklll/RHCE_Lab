@@ -1,7 +1,22 @@
-# Solución: med_pkg_svc_vsftpd (medium) — vsftpd instalado y activo
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — med_pkg_svc_vsftpd          [dificultad: medium]
+# ----------------------------------------------------------------------------
+#  TAREA: "Instala vsftpd y deja el servicio activo."
+#
+#  Mismo patrón paquete+servicio que med_pkg_svc_chrony (allí está el
+#  comentario completo): package present + service enabled+started.
+#
+#  DETALLE FINO:
+#    - Aquí paquete y servicio se llaman IGUAL ('vsftpd'); en chrony
+#      difieren (chrony/chronyd). Para averiguar el nombre del servicio:
+#      rpm -ql <paquete> | grep 'systemd/system' dentro del nodo.
+#
+#  VALIDACIÓN: core/checkers/package.sh + service.sh en todos los nodos.
+# ============================================================================
 - name: vsftpd instalado y habilitado y arrancado
   hosts: all
   become: true
+
   tasks:
     - name: Instalar vsftpd
       ansible.builtin.package:
@@ -10,6 +25,6 @@
 
     - name: Habilitar y arrancar vsftpd
       ansible.builtin.service:
-        name: vsftpd
+        name: vsftpd          # mismo nombre que el paquete
         enabled: true
         state: started

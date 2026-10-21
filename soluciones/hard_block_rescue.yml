@@ -1,25 +1,56 @@
-# ============================================================
-#  SOLUCIÓN MODELO — hard_block_rescue (v1.3.0)
-#  Va en el control como /home/ansible/block_rescue.yml
-#  Es también el play de prueba para el checker.
-# ============================================================
+# ============================================================================
+#  SOLUCIÓN MODELO — hard_block_rescue                   [dificultad: hard]
+#                     (compatible v1.3.3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Con un playbook guardado en control:/home/ansible/block_rescue.yml
+#  (ruta EXIGIDA por el enunciado): un block que intenta instalar un
+#  paquete inexistente, un rescue que instala 'tree' como plan B y un
+#  always que crea /tmp/block_ok en cada nodo."
+#
+#  EL PATRÓN block/rescue/always (control de errores DECLARATIVO):
+#    - block:   tareas "normales". Si ALGUNA falla, NO se aborta el play:
+#               se salta a rescue con el host marcado como 'rescued'.
+#    - rescue:  el plan B. Aquí instala 'tree' porque 'paquete-fantasma'
+#               NO existe en ningún repo: el fallo del block está
+#               GARANTIZADO, así que el rescue se ejecuta SIEMPRE que
+#               corre este playbook (es justo lo que la tarea enseña).
+#    - always:  se ejecuta TANTO si todo fue bien como si hubo rescate:
+#               marcadores, limpieza, notificaciones. /tmp/block_ok es
+#               la PRUEBA de que always corrió pese al fallo inicial.
+#
+#  DOBLE FUNCIÓN DE ESTE FICHERO:
+#    - Solución de referencia para el alumno.
+#    - PLAY DE PRUEBA del checker (core/checkers/block_rescue.sh): el
+#      checker ejecuta este mismo playbook contra los nodos y comprueba
+#      que /tmp/block_ok aparece en TODOS: demuestra que el rescue y el
+#      always funcionaron de verdad.
+#
+#  DETALLE FINO:
+#    - mode SIEMPRE entre comillas: YAML 1.1 leería 0644 sin comillas
+#      como octal (420 decimal). Con PyYAML "coincide" que 420 decimal
+#      es 0644 octal y funciona por casualidad — no dependas de esa lotería.
+#
+#  NOTA DE RUTA: el enunciado exige EXACTAMENTE
+#  control:/home/ansible/block_rescue.yml (véase soluciones/README.md).
+# ============================================================================
 - name: Bloque con rescate y siempre
   hosts: all
   become: true
+
   tasks:
-    - block:
+    - block:                        # la sección "intentar"
         - name: Intento condenado a fallar
           ansible.builtin.dnf:
-            name: paquete-fantasma
+            name: paquete-fantasma   # no existe en ningún repo: fallo seguro
             state: present
-      rescue:
+      rescue:                        # el plan B: SOLO si el block falló
         - name: Plan B cuando el paquete no existe
           ansible.builtin.dnf:
-            name: tree
+            name: tree               # paquete real: el rescue SÍ debe funcionar
             state: present
-      always:
+      always:                        # se ejecunte bien o mal: SIEMPRE
         - name: Marcador de ejecucion en cada nodo
           ansible.builtin.file:
-            path: /tmp/block_ok
+            path: /tmp/block_ok      # la prueba de que always corrió
             state: touch
-            mode: "0644"
+            mode: "0644"             # comillas SIEMPRE (octal de YAML)

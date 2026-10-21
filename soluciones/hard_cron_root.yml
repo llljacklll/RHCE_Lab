@@ -1,19 +1,42 @@
-# Solución: hard_cron_root (hard) — cron para root: '/usr/local/bin/backup.sh'
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — hard_cron_root               [dificultad: hard]
+# ----------------------------------------------------------------------------
+#  TAREA: "Añade una entrada cron diaria para ROOT que ejecute
+#  '/usr/local/bin/backup.sh'."
+#
+#  DIFERENCIAS CON hard_cron (dos):
+#    1) user: root -> la entrada vive en /var/spool/cron/root.
+#    2) El job apunta a un script PROPIO que el enunciado da por existente.
+#       Para que la solución sea AUTOCONTENIDA (funcione aunque el script
+#       no exista aún), el playbook crea un STUB ejecutable: cron queda
+#       funcional y la entrada, completa.
+#
+#  DETALLES FINOS DEL STUB:
+#    - copy + content: | (literal multilínea) con mode "0755": sin bit de
+#      ejecución, cron no podría lanzar el script. Comillas en el mode
+#      (evita el octal de YAML).
+#    - 'exit 0': stub silencioso y con éxito — aquí lo que se practica es
+#      la ENTRADA cron, no el backup en sí.
+#
+#  VALIDACIÓN: core/checkers/cron.sh — la línea del job en el crontab de
+#  root de cada nodo.
+# ============================================================================
 - name: Entrada cron para root (+ stub de backup.sh)
   hosts: all
   become: true
+
   tasks:
     - name: Entrada '/usr/local/bin/backup.sh' a diario para root
       ansible.builtin.cron:
-        name: backup_root
-        user: root
-        special_time: daily
-        job: "/usr/local/bin/backup.sh"
+        name: backup_root          # identificador de la entrada
+        user: root                 # crontab de root
+        special_time: daily        # @daily
+        job: "/usr/local/bin/backup.sh"   # script propio: lo crea la tarea siguiente
 
     - name: Stub de backup.sh (la tarea es autocontenida)
       ansible.builtin.copy:
         dest: /usr/local/bin/backup.sh
-        mode: "0755"
+        mode: "0755"               # ejecutable: si no, cron no puede lanzarlo
         content: |
           #!/bin/bash
           exit 0

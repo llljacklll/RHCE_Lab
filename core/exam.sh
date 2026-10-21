@@ -143,6 +143,7 @@ function _print_exam_instructions() {
     echo "  2. Ejecútalo:   ./lab.sh run mi_solucion.yml"
     echo "     Con vault:   ./lab.sh run --vault mi_solucion.yml"
     echo "  3. Corrige con: ./lab.sh grade"
+    echo "  Atascado? Solución de referencia: soluciones/<task_id>.yml"
     echo ""
     echo "  El cronómetro corre en segundo plano. Si el tiempo"
     echo "  expira, la corrección queda BLOQUEADA (anti-trampas)."

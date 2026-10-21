@@ -1,9 +1,24 @@
-# Solución: rand_pkg_mariadb (easy) — Instalar mariadb-server
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_pkg_mariadb            [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Instala el servidor de base de datos (mariadb-server)."
+#
+#  Mismo patrón que rand_pkg_httpd (package genérico + present + become).
+#
+#  DETALLE FINO (trampa clásica de examen):
+#    - 'mariadb'        = el CLIENTE (CLI mysql).
+#    - 'mariadb-server' = el SERVIDOR (mysqld).
+#    El enunciado pide "servidor de base de datos": si instalas el cliente,
+#    dnf da exit 0 y el checker pita. Nombres de paquete: AL LITERAL.
+#
+#  VALIDACIÓN: core/checkers/package.sh — mariadb-server en todos los nodos.
+# ============================================================================
 - name: Instalar mariadb-server
   hosts: all
   become: true
+
   tasks:
     - name: Instalar el paquete mariadb-server
       ansible.builtin.package:
-        name: mariadb-server
+        name: mariadb-server   # el SERVIDOR, no el cliente 'mariadb'
         state: present

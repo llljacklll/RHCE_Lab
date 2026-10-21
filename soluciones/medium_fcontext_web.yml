@@ -1,26 +1,60 @@
-# Solución: medium_fcontext_web (medium) — /web + regla fcontext + restorecon
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — medium_fcontext_web          [dificultad: medium]
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea /web con un index.html de prueba, añade la regla SELinux
+#  fcontext '/web(/.*)?' -> httpd_sys_content_t y aplica restorecon."
+#
+#  QUÉ PRACTICA (EX294):
+#    - community.general.sefcontext: reglas de contexto PERSISTENTES
+#      (equivalen a 'semanage fcontext -a'): sobreviven a relabels y boots.
+#    - ansible.builtin.command + changed_when: false: para órdenes sin
+#      módulo nativo que no deben "ensuciar" con changed en re-ejecuciones.
+#
+#  CONCEPTO SELINUX CLAVE (por qué el enunciado pide DOS pasos):
+#    - La regla fcontext NO es retroactiva: los ficheros YA creados
+#      mantienen su contexto hasta un relabel. restorecon -R /web aplica
+#      la regla al contenido EXISTENTE.
+#    - Si creas la regla y NO haces restorecon, 'ls -Z' no mostrará
+#      httpd_sys_content_t en index.html -> el checker sale rojo.
+#    - '/web(/.*)?' es la regex de semanage: casa con /web y con todo su
+#      contenido, recursivamente.
+#
+#  DETALLES FINOS:
+#    - changed_when: false en restorecon: Ansible no sabe si restorecon
+#      cambió algo; sin esto marcaría 'changed' SIEMPRE y el playbook
+#      parecería no-idempotente (restorecon en sí ya es idempotente).
+#    - mode SIEMPRE entre comillas: sin ellas YAML 1.1 lee 0755 como octal.
+#
+#  VALIDACIÓN: core/checkers/selinux_fcontext.sh — regla persistente
+#  presente y contexto httpd_sys_content_t aplicado al fichero.
+# ============================================================================
 - name: SELinux fcontext para /web
   hosts: all
-  become: true
+  become: true            # semanage/restorecon y crear /web requieren root
+
   tasks:
+    # 1) El directorio, con permisos estándar de contenido web
     - name: Directorio /web
       ansible.builtin.file:
         path: /web
         state: directory
-        mode: "0755"
+        mode: "0755"           # comillas: evita el octal de YAML
 
+    # 2) Fichero de prueba: sin él no hay nada que relabelear
     - name: index.html de prueba
       ansible.builtin.copy:
         dest: /web/index.html
         content: "hola"
 
+    # 3) La REGLA persistente (semanage fcontext -a -t httpd_sys_content_t)
     - name: Regla fcontext '/web(/.*)?' -> httpd_sys_content_t
       community.general.sefcontext:
-        target: '/web(/.*)?'
-        setype: httpd_sys_content_t
-        state: present
+        target: '/web(/.*)?'          # regex de semanage
+        setype: httpd_sys_content_t   # tipo estándar de contenido web
+        state: present                # idempotente: no duplica la regla
 
+    # 4) Relabel de lo ya existente: sin esto, el checker sale rojo
     - name: Relabel con restorecon (como pide el enunciado)
       ansible.builtin.command:
         cmd: restorecon -R /web
-      changed_when: false
+      changed_when: false      # restorecon solo cambia si los contextos difieren

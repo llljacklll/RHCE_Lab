@@ -1,9 +1,30 @@
-# Solución: rand_pkg_httpd (easy) — Instalar el servidor web httpd
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — rand_pkg_httpd              [dificultad: easy]
+# ----------------------------------------------------------------------------
+#  TAREA: "Instala el servidor web httpd en todos los nodos."
+#
+#  QUÉ PRACTICA (EX294):
+#    - ansible.builtin.package: módulo GENÉRICO de paquetería; delega en el
+#      gestor nativo de cada distro (dnf en AlmaLinux/RHEL). Máxima
+#      portabilidad: es la opción preferida cuando el enunciado no exige
+#      un gestor concreto (ansible.builtin.dnf también valdría aquí).
+#    - Idempotencia: 'state: present' = "asegúrate de que está instalado".
+#      La 2ª ejecución da ok sin changed: re-ejecutar es gratis y seguro.
+#
+#  DETALLES FINOS:
+#    - become: true es obligatorio: instalar toca /usr/bin y la rpmdb.
+#    - NO uses 'latest' si el enunciado pide "instalado": 'latest' consulta
+#      repos en cada ejecución y puede ACTUALIZAR (cambio que nadie pidió).
+#
+#  VALIDACIÓN: core/checkers/package.sh — el paquete consta instalado (rpm)
+#  en TODOS los nodos del inventario.
+# ============================================================================
 - name: Instalar httpd
-  hosts: all
-  become: true
+  hosts: all                # "todos los nodos" del enunciado
+  become: true              # dnf/rpm requieren privilegios de root
+
   tasks:
     - name: Instalar el paquete httpd
       ansible.builtin.package:
-        name: httpd
-        state: present
+        name: httpd          # nombre del paquete en AlmaLinux/RHEL
+        state: present       # instalar si falta; no tocar si ya está

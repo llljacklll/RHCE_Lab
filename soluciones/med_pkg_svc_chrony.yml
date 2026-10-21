@@ -1,15 +1,34 @@
-# Solución: med_pkg_svc_chrony (medium) — chrony instalado y chronyd activo
+# ============================================================================
+#  SOLUCIÓN DE REFERENCIA — med_pkg_svc_chrony          [dificultad: medium]
+# ----------------------------------------------------------------------------
+#  TAREA: "Instala chrony y deja el servicio chronyd habilitado y corriendo."
+#
+#  QUÉ PRACTICA (EX294):
+#    - EL patrón 'medium' más común del examen: paquete + servicio en un
+#      mismo play (2 tareas, 2 módulos builtin).
+#    - Lectura fina del enunciado: "instalado y activo" se traduce en
+#      state: present + enabled: true + state: started.
+#
+#  DETALLES FINOS:
+#    - chrony = paquete; chronyd = servicio (la 'd' de daemon). El checker
+#      valida el SERVICIO, no el paquete: instalar solo no puntúa.
+#    - Los nodos del lab corren systemd real dentro del contenedor, así
+#      que service/systemctl se comporta como en una máquina física.
+#
+#  VALIDACIÓN: core/checkers/package.sh + service.sh en todos los nodos.
+# ============================================================================
 - name: chrony instalado y chronyd habilitado y arrancado
   hosts: all
   become: true
+
   tasks:
     - name: Instalar chrony
       ansible.builtin.package:
-        name: chrony
+        name: chrony          # el paquete NTP
         state: present
 
     - name: Habilitar y arrancar chronyd
       ansible.builtin.service:
-        name: chronyd
-        enabled: true
-        state: started
+        name: chronyd         # el daemon (ojo a la 'd' final)
+        enabled: true         # en el boot
+        state: started        # ahora
