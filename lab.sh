@@ -1,7 +1,37 @@
 #!/bin/bash
+# ============================================================================
+#  lab.sh — ROUTER PRINCIPAL y único punto de entrada de la CLI del lab
+# ----------------------------------------------------------------------------
+#  QUÉ HACE: comprueba prerrequisitos del host, carga los módulos (ui/ +
+#  core/) y despacha la acción pedida (up, run, exam, grade...) a la
+#  función que la implementa en core/*.sh. Aquí NO vive lógica de negocio:
+#    [1] preflight de dependencias (auto-reparable)
+#    [2] secreto local .vault_pass si falta   [3] carga de módulos (source x10)
+#    [4] estado global del router             [5] ayuda (print_help)
+#    [6] parser de argumentos                 [7] dispatch final
+#
+#  MAPA DE MÓDULOS (todo lo que se sourcea abajo):
+#    ui/colors.sh ........ paleta ANSI (RED/GREEN/CYAN/YELLOW/NC)
+#    ui/banner.sh ........ panel de estado (print_banner)
+#    core/constants.sh ... constantes: DNS por defecto, rutas, etc.
+#    core/utils.sh ........ helpers genéricos (logging, esperas)
+#    core/docker.sh ....... up/down/start/stop/reset/shell/doctor/autostart
+#    core/ansible.sh ...... 'run': ejecutar playbooks del alumno
+#    core/exam_random.sh .. sorteo de tareas desde scenarios/task_pool.yml
+#    core/exam.sh ......... 'exam': generar/presentar/iniciar examen
+#    core/grade.sh ........ 'grade': corrección + anti-trampas (cronómetro)
+#    core/test.sh ......... 'test': batería de humo automática
+#
+#  USO: ./lab.sh <acción> [opciones]  (sin argumentos = menú de ayuda)
+# ============================================================================
 
-# [DEP-GUARD] v1.1.2 - dependencias del host se comprueban al lanzar lab.sh
-# falta algo -> auto-ejecuta scripts/vm_bootstrap.sh (idempotente)
+# ----------------------------------------------------------------------------
+# [1] PREFLIGHT — dependencias del HOST (no de los contenedores)
+# ----------------------------------------------------------------------------
+# Necesita: docker CLI + plugin 'docker compose' v2 (no el viejo
+# docker-compose), python3 con PyYAML (los generadores leen YAML) y
+# /dev/loop0 (los discos de las tareas LVM son loops del host). Si falta
+# ALGO, auto-repara con scripts/vm_bootstrap.sh (idempotente).
 command -v docker >/dev/null 2>&1 || DEP_MISSING=1
 docker compose version >/dev/null 2>&1 || DEP_MISSING=1
 python3 -c "import yaml" >/dev/null 2>&1 || DEP_MISSING=1
@@ -10,9 +40,19 @@ if [ "${DEP_MISSING:-0}" = "1" ]; then
   echo "[!] Faltan dependencias del host -> ejecutando scripts/vm_bootstrap.sh"
   bash "$(dirname "$(readlink -f "$0")")/scripts/vm_bootstrap.sh" || { echo "[X] vm_bootstrap.sh fallo"; exit 1; }
 fi
+
+# Daemon de docker caído -> un intento de arranque vía systemd y seguir
+# (|| true: no abortar aquí; quien necesite docker de verdad reportará
+# un error claro más adelante, p.ej. doctor).
 docker info >/dev/null 2>&1 || systemctl start docker >/dev/null 2>&1 || true
-# [FIX10] .vault_pass es gitignored a proposito (secreto local); un clone
-# fresco no lo trae -> se crea si falta para que smoke/vault/examenes funcionen.
+
+# ----------------------------------------------------------------------------
+# [2] SECRETO LOCAL — ansible/files/.vault_pass
+# ----------------------------------------------------------------------------
+# El password de Vault NO viaja en git (.gitignore A PROPÓSITO: es un
+# secreto local de práctica). Pero un clone fresco no lo trae y rompería
+# los ejercicios con vault (examen y smoke test), así que se crea al
+# vuelo con el password de práctica. chmod 600: es (nominalmente) secreto.
 VPASS="$(dirname "$(readlink -f "$0")")/ansible/files/.vault_pass"
 if [ ! -f "$VPASS" ]; then
   mkdir -p "$(dirname "$VPASS")"
@@ -21,11 +61,12 @@ if [ ! -f "$VPASS" ]; then
   echo "[+] Creado $VPASS (gitignored a proposito)"
 fi
 
-
-# ==========================================
-# RHCE LAB PRO - Router Principal
-# ==========================================
-
+# ----------------------------------------------------------------------------
+# [3] CARGA DE MÓDULOS — el orden importa:
+#     colors primero (el resto pinta con colores), constants antes de que
+#     nadie use DEFAULT_DNS. BASH_SOURCE (no $0): resistente a symlinks
+#     y a lanzar el lab desde cualquier directorio.
+# ----------------------------------------------------------------------------
 source "$(dirname "${BASH_SOURCE[0]}")/ui/colors.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/constants.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/utils.sh"
@@ -37,12 +78,24 @@ source "$(dirname "${BASH_SOURCE[0]}")/core/exam.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/grade.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/test.sh"
 
+# ----------------------------------------------------------------------------
+# [4] ESTADO GLOBAL del router
+# ----------------------------------------------------------------------------
+# ACTION        : acción principal que se despachará abajo
+# DNS_CONFIG    : DNS que incrustará compose al levantar (default: DEFAULT_DNS)
+# PLAYBOOK_FILE : playbook del alumno para 'run'
+# EXAM_ARGS     : TODOS los argumentos tras 'exam' (se re-parten al despachar)
+# VAULT_MODE    : true => 'run' pedirá el password de Vault
 ACTION=""
 DNS_CONFIG="$DEFAULT_DNS"
 PLAYBOOK_FILE=""
 EXAM_ARGS=""
 VAULT_MODE=false
 
+# ----------------------------------------------------------------------------
+# [5] AYUDA — se muestra sin argumentos, con -h/--help y ante opciones
+#     desconocidas. Termina con exit 0 (explorar el lab no es un error).
+# ----------------------------------------------------------------------------
 function print_help() {
     print_banner
     echo "Uso: $0 <acción> [opciones]"
@@ -83,8 +136,18 @@ function print_help() {
     exit 0
 }
 
+# Sin argumentos -> ayuda (print_help sale con exit 0).
 [[ $# -eq 0 ]] && print_help
 
+# ----------------------------------------------------------------------------
+# [6] PARSER — bucle while/shift: cada rama consume lo suyo.
+#     El orden de opciones y acción es LIBRE ('up --dns x' = '--dns x up').
+#     - run/grade: bucle interno que acepta --vault antes del nombre del
+#       playbook; tras el NOMBRE el parseo se detiene a propósito (el
+#       resto se descarta).
+#     - exam: se queda con TODOS los argumentos restantes (su submenú es
+#       rico: --random/--start/ficheros/dificultad...).
+# ----------------------------------------------------------------------------
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --dns)
@@ -104,6 +167,8 @@ while [[ "$#" -gt 0 ]]; do
         run|grade)
             ACTION="$1"
             shift
+            # Bucle interno: recoge --vault y el primer token no-opción
+            # (el playbook). El 'break' tras capturarlo es deliberado.
             while [[ "$#" -gt 0 ]]; do
                 case "$1" in
                     --vault) VAULT_MODE=true; shift ;;
@@ -112,6 +177,11 @@ while [[ "$#" -gt 0 ]]; do
             done
             ;;
         exam)
+            # EXAM_ARGS="$*" junta todo lo restante; en el dispatch se
+            # expande SIN comillas (lab_exam $EXAM_ARGS) para re-partirlo
+            # en argumentos independientes: el único punto donde la
+            # división de palabras es INTENCIONAL (shellcheck diría
+            # SC2086 — aquí es a propósito).
             ACTION="$1"
             shift
             EXAM_ARGS="$*"
@@ -124,6 +194,13 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+# ----------------------------------------------------------------------------
+# [7] DISPATCH — cada acción a su función (definidas en core/*.sh):
+#     up/down/start/stop/reset/shell/doctor/autostart -> core/docker.sh
+#     run -> core/ansible.sh · exam -> core/exam.sh · grade -> core/grade.sh
+#     test -> core/test.sh. 'down' además resetea el estado del examen:
+#     un examen a medias NO debe sobrevivir a la destrucción del lab.
+# ----------------------------------------------------------------------------
 case "$ACTION" in
     up)    print_banner; lab_up ;;
     down)  lab_down; reset_exam_state ;;
@@ -134,10 +211,11 @@ case "$ACTION" in
     doctor)   lab_doctor ;;
     autostart) lab_autostart ;;
     run)   lab_run ;;
-    exam)  lab_exam $EXAM_ARGS ;; 
+    exam)  lab_exam $EXAM_ARGS ;;
     grade) lab_grade ;;
     test)  print_banner; lab_test ;;
     *)
+        # Solo opciones globales sin acción (ej: './lab.sh --dns 1.1.1.1').
         echo -e "${RED}Error: Falta la acción principal.${NC}"
         print_help
         ;;
