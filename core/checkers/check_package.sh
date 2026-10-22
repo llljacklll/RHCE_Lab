@@ -15,9 +15,10 @@
 #    - $2 = name .. parámetro principal de la tarea (aquí:
 #      el nombre del paquete, p. ej. "tree").
 #    - $3 = path .. parámetro secundario (aquí: sin uso).
-#    - SALIDA: UNA línea en stdout, exactamente "OK" o
-#      "FAIL". Los avisos van a stderr; _run_check corta el
-#      examen al primer FAIL del nodo.
+#    - SALIDA: UNA línea en stdout, "OK" o "FAIL <razón>":
+#      la razón viaja al reporte y de ahí al log de
+#      state/results/. Los avisos de infraestructura van a
+#      stderr. _run_check corta el examen al primer FAIL.
 #
 #  HONESTIDAD PRISTINO=>FAIL: en un laboratorio recién
 #  montado el paquete NO está y este check canta FAIL sin
@@ -25,4 +26,8 @@
 #  base de datos RPM), no procesos ni ficheros del alumno.
 # ============================================================
 local node="$1"; local pkg="$2"
-docker exec "$node" rpm -q "$pkg" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+if docker exec "$node" rpm -q "$pkg" >/dev/null 2>&1; then
+    echo "OK"
+else
+    echo "FAIL el paquete $pkg no está instalado en $node (rpm -q)"
+fi

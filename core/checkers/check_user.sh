@@ -9,13 +9,21 @@
 #    $3 = path . UID esperado, OPCIONAL: si llega y no
 #          coincide -> FAIL (crearlo "a mano" con otro UID no
 #          puntúa); si no llega, basta con que exista.
-#  SALIDA: "OK"/"FAIL" (una línea, stdout).
+#  SALIDA: "OK" o "FAIL <razón>" (1 línea, stdout).
 #  DETALLE: id -u imprime el UID numérico y se compara como
 #  cadena exacta — sin aritmética: fallar es fallar.
 # ============================================================
 local node="$1"; local user="$2"; local uid="${3:-}"
 if [ -n "$uid" ]; then
-    [ "$(docker exec "$node" id -u "$user" 2>/dev/null)" = "$uid" ] && echo "OK" || echo "FAIL"
+    local actual
+    actual=$(docker exec "$node" id -u "$user" 2>/dev/null)
+    if [ -z "$actual" ]; then
+        echo "FAIL el usuario $user no existe en $node"
+    elif [ "$actual" != "$uid" ]; then
+        echo "FAIL $user existe pero su UID es $actual (se pedía $uid) en $node"
+    else
+        echo "OK"
+    fi
 else
-    docker exec "$node" id -u "$user" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+    docker exec "$node" id -u "$user" >/dev/null 2>&1 && echo "OK" || echo "FAIL el usuario $user no existe en $node"
 fi

@@ -8,10 +8,14 @@
 #                  con __NODE__ en el YAML llega ya expandido
 #                  al nodo que toca en cada pasada)
 #    $3 = path .. sin uso en este plugin
-#  SALIDA: "OK"/"FAIL" (una línea, stdout).
+#  SALIDA: "OK" o "FAIL <razón>" (1 línea, stdout).
 #  DETALLE: lvs <ruta> consulta los metadatos LVM, no el
 #  kernel: existir como LV basta, no hace falta que esté
 #  montado ni activo.
 # ============================================================
 local node="$1"; local lv_path="$2"
-docker exec "$node" lvs "$lv_path" >/dev/null 2>&1 && echo "OK" || echo "FAIL"
+if docker exec "$node" lvs "$lv_path" >/dev/null 2>&1; then
+    echo "OK"
+else
+    echo "FAIL el Logical Volume $lv_path no existe en $node (lvs)"
+fi

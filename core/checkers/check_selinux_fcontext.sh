@@ -50,7 +50,7 @@ if [ -n "$rules" ]; then
         echo "OK"
         return 0
     fi
-    echo "FAIL"
+    echo "FAIL la spec '$spec' con tipo $ftype no está en la policy de $node (semanage/matchpathcon)"
     return 1
 fi
 
@@ -59,5 +59,5 @@ echo "[checker] $node: policy SELinux no accesible, fallback a existencia" >&2
 if docker exec "$node" test -e "$bare" 2>/dev/null; then
     echo "OK"
 else
-    echo "FAIL"
+    echo "FAIL la ruta $bare no existe en $node (fallback: policy no accesible)"
 fi

@@ -6,12 +6,20 @@
 #    $1 = node .. contenedor a comprobar
 #    $2 = name .. unidad (p. ej. "httpd", "sshd")
 #    $3 = path .. sin uso en este plugin
-#  DETALLE: is-active --quiet decide SOLO por el código de
-#  salida (0 = activa) y no imprime nada. Es el ESTADO actual:
+#  SALIDA: "OK" o "FAIL <razón>" (1 línea, stdout).
+#  DETALLE: systemctl is-active imprime el estado (active/
+#  inactive/failed...) y su rc es 0 SOLO si está activa:
+#  mismo criterio que is-active --quiet, pero la palabra
+#  impresa alimenta la razón del FAIL. Es el ESTADO actual:
 #  un servicio "enabled" pero caído cantará FAIL aquí, y al
 #  revés — la Fase 1 de test.sh usa is-enabled justo para
 #  comprobar lo complementario.
-#  SALIDA: "OK"/"FAIL" (una línea, stdout).
 # ============================================================
 local node="$1"; local svc="$2"
-docker exec "$node" systemctl is-active --quiet "$svc" 2>/dev/null && echo "OK" || echo "FAIL"
+local state
+state=$(docker exec "$node" systemctl is-active "$svc" 2>/dev/null)
+if [ "$state" = "active" ]; then
+    echo "OK"
+else
+    echo "FAIL el servicio $svc no está activo en $node (estado: ${state:-desconocido})"
+fi
