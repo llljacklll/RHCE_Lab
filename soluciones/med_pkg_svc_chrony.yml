@@ -15,7 +15,7 @@
 #    - Los nodos del lab corren systemd real dentro del contenedor, así
 #      que service/systemctl se comporta como en una máquina física.
 #
-#  VALIDACIÓN: core/checkers/check_package.sh + service.sh en todos los nodos.
+#  VALIDACIÓN: core/checkers/check_package.sh + check_service.sh en todos los nodos.
 # ============================================================================
 - name: chrony instalado y chronyd habilitado y arrancado
   hosts: all

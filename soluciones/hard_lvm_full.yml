@@ -27,7 +27,7 @@
 #    - La advertencia de unicidad de VGs (device-mapper global al kernel)
 #      aplica igual que en hard_lvm_vg: por eso vg_<nodo>.
 #
-#  VALIDACIÓN: core/checkers/{lvm,filesystem,mount}.sh — vgs, tipo de FS
+#  VALIDACIÓN: core/checkers/check_{lvm,filesystem,mount}.sh — vgs, tipo de FS
 #  y punto de montaje con entrada en /etc/fstab en cada nodo.
 # ============================================================================
 - name: LVM completo (VG + LV lv_data 300m + ext4 + /mnt/datos)
