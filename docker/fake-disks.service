@@ -1,3 +1,18 @@
+# ============================================================
+#  DOCKER/FAKE-DISKS.SERVICE — Discos LVM fake al arranque
+# ------------------------------------------------------------
+#  Unidad de la IMAGEN (la habilita el Dockerfile): en cada
+#  boot ejecuta /usr/local/bin/setup-disks.sh para que el nodo
+#  tenga SU pareja de /dev/loopN de 1G lista antes de que el
+#  alumno entre.
+#   - oneshot + RemainAfterExit=yes: corre UNA vez por arranque
+#     y queda 'active (exited)'; re-ejecutar es explícito
+#     ('systemctl restart fake-disks'), no un rebote del daemon.
+#   - ExecStartPost sleep 2: margen para que los loops asienten
+#     antes del primer playbook.
+#   - After=local-fs.target: los .img viven en el propio nodo
+#     (/opt/lvm_disks), hay que esperar al fs local.
+# ============================================================
 [Unit]
 Description=Create fake block devices for LVM labs
 After=local-fs.target

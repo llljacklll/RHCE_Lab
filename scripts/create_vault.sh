@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  🔐 SCRIPTS/CREATE_VAULT.SH — Bootstrap del Ansible Vault
+#  SCRIPTS/CREATE_VAULT.SH — Bootstrap del Ansible Vault
 # ============================================================
 #  QUÉ HACE (en orden):
 #    1. Verifica que estás en la raíz del repo.
@@ -17,6 +17,15 @@
 #  USO:
 #    ./scripts/create_vault.sh            # modo normal
 #    ./scripts/create_vault.sh --force    # regenerar aunque exista
+#
+#  DISEÑO (didáctico, a propósito):
+#   - Contraseña y valor son CONSTANTES visibles en este fichero:
+#     es un lab de estudio, no producción. El secreto db_password
+#     es el que buscan los checkers del exam_003.
+#   - El encriptado usa un password-file EFÍMERO en /root/ dentro
+#     del contenedor (se borra al terminar); el .vault_pass del
+#     host queda para el smoke 5/5 y ansible-vault, y por eso
+#     está fuera de git.
 # ============================================================
 
 # ---------- Configuración del laboratorio (didáctica) ----------
@@ -39,7 +48,8 @@ fi
 if [ -f "$SECRET_FILE" ] && grep -q "ANSIBLE_VAULT" "$SECRET_FILE" 2>/dev/null; then
     if [ "$1" != "--force" ]; then
         echo -e "${YELLOW}[!] '$SECRET_FILE' ya existe y está encriptado. Nada que hacer.${NC}"
-        # FIX: aunque el vault ya exista, asegurar .vault_pass (no viaja en git)
+        # Aunque el vault ya exista, se asegura .vault_pass: no
+        # viaja en git y un clone fresco no lo trae.
         PASS_FILE="ansible/files/.vault_pass"
         if [ ! -f "$PASS_FILE" ]; then
             printf '%s\n' "$VAULT_PASS" > "$PASS_FILE"

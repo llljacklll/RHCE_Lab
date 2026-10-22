@@ -1,8 +1,24 @@
 #!/bin/bash
-# Extrae cada heredoc python de los .sh y lo compila:
-# marca los truncados/corruptos para repararlos.
+# ============================================================
+#  SCRIPTS/AUDIT_PY.SH — Auditor de heredocs python embebidos
+# ------------------------------------------------------------
+#  Recorre todos los .sh del repo (raíz, core/, core/checkers/,
+#  scripts/, docker/), extrae CADA heredoc python3 y lo compila
+#  con py_compile. Detecta dos clases de daño silencioso:
+#    [SIN-CERRAR] la marca de cierre no aparece (heredoc
+#                 truncado por una edición desafortunada)
+#    [CORRUPTO]   el cuerpo no compila como python puro
+#  TRUCO: antes de compilar, $VAR y ${VAR} se sustituyen por
+#  '3' — en ejecución el shell los interpolaría, pero el cuerpo
+#  debe compilar igual como python estático.
+#  CONTRATO: exit 0 = todos sanos; exit 1 = defectos (listados
+#  con fichero + marca + línea). Apta para CI o pre-commit.
+#  NOTA (excepción funcional del lote 8): el cd era ~/RHCE_Lab
+#  absoluto y rompía en cualquier otra ruta (p.ej. Dropbox);
+#  ahora es relativo al repo, como smoke_test.sh.
+# ============================================================
 set -u
-cd ~/RHCE_Lab || exit 1
+cd "$(dirname "$0")/.." || exit 1
 python3 - << 'PYEOF'
 import glob, re, sys, py_compile, tempfile, os
 total = bad = 0

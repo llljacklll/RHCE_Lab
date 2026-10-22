@@ -1,8 +1,24 @@
 #!/bin/bash
 # ============================================================
-#  SCRIPTS/SMOKE_TEST.SH — Verificacion integral del laboratorio
-#  Uso (desde la raiz del repo): ./scripts/smoke_test.sh
-#  Todo verde = laboratorio listo para examen.
+#  SCRIPTS/SMOKE_TEST.SH — Verificación integral del laboratorio
+# ------------------------------------------------------------
+#  5 grupos de checks en orden de dependencias (si uno falla,
+#  los siguientes casi seguro también):
+#    1/5 Contenedores — los 4 nodos arriba (docker ps).
+#    2/5 Conectividad — ansible ping desde control (3/3 nodos).
+#    3/5 Discos fake  — cada nodo con SU pareja de loops bien
+#                       enganchada a sus .img de /opt/lvm_disks.
+#    4/5 Aislamiento  — /dev/loop0 mide 1G usable y el nvme
+#                       REAL del host no aparece en pvs (el
+#                       filtro de lvmlocal.conf funciona).
+#    5/5 Vault        — secrets.yml desencripta con .vault_pass
+#                       y contiene db_password.
+#
+#  USO (desde la raíz del repo): ./scripts/smoke_test.sh
+#  CONTRATO: exit 0 = LAB 100% READY (apto para examen);
+#            exit 1 = FALLOS (resumen con recuentos).
+#  Nota: el 5/5 necesita ansible/files/.vault_pass (no viaja
+#  en git; lo crean create_vault.sh y la demo completa).
 # ============================================================
 cd "$(dirname "$0")/.." || { echo "no encuentro la raiz del repo"; exit 1; }
 

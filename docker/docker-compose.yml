@@ -1,6 +1,28 @@
 # ==========================================
-#  RHCE LAB - Red fija y contenedores privilegiados
-#  (reconstruido: expandido y con ancla YAML)
+#  RHCE LAB - Topología del laboratorio:
+#  control + node1..3 sobre una red bridge FIJA
+#  (172.20.0.0/24, IPs .10-.13). La topología es
+#  parte del enunciado: no puede cambiar entre
+#  arranques.
+#
+#  ANCLA YAML x-node-base: la base común (build,
+#  privileged, SIGRTMIN+3, cgroup:host, loop-control,
+#  capabilities) se declara UNA vez y cada servicio
+#  la fusiona con '<<: *node-base' (DRY: un solo
+#  sitio que tocar si cambia la base).
+#
+#  POR QUÉ tan privilegiados: systemd como PID 1
+#  en un contenedor necesita privilegios reales
+#  (cgroup:host) y una señal de apagado limpia
+#  (SIGRTMIN+3, la que docker espera de un init).
+#  NET_ADMIN/NET_RAW: firewalld offline.
+#  SYS_ADMIN/MKNOD: cada nodo crea/adjunta SUS
+#  /dev/loopN (discos LVM fake).
+#
+#  Solo 'control' monta el repo (../ansible como
+#  /opt/ansible): es el nodo de gestión; node1..3
+#  reciben los cambios vía playbooks, como en la
+#  arquitectura real de gestión.
 # ==========================================
 
 x-node-base: &node-base

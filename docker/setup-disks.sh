@@ -1,14 +1,30 @@
 #!/bin/bash
-# ==========================================
-#  setup-disks.sh v2 — discos LVM fake (MV)
-#  - EL10 no crea /dev/loopN: mknod propio
-#  - los loops son GLOBALES en el kernel ->
-#    pareja FIJA por nodo para no pisarse:
-#      node1 -> loop0/1   node2 -> loop2/3
-#      node3 -> loop4/5   control -> nada
-#  - PROHIBIDO 'losetup -D' (desmontaria
-#    los discos de los OTROS nodos)
-# ==========================================
+# ============================================================
+#  DOCKER/SETUP-DISKS.SH — Discos LVM fake por nodo (arranque)
+# ------------------------------------------------------------
+#  Lo invoca fake-disks.service en cada boot: deja a CADA nodo
+#  con SU pareja de /dev/loopN de 1G para las prácticas LVM.
+#
+#  DISEÑO:
+#   - Los loop devices son GLOBALES en el kernel (compartidos
+#     por todos los contenedores): por eso cada nodo tiene una
+#     pareja FIJA y solo toca la suya:
+#       node1 -> loop0/1   node2 -> loop2/3
+#       node3 -> loop4/5   control -> ninguno
+#   - Identidad por hostname O por IP fija (case con ambas):
+#     robusto aunque falle el hostname temporal.
+#   - EL10 no crea /dev/loopN por sí solo: mknod propio de
+#     loop-control y de los dos loops si faltan.
+#   - Si el kernel aún no tiene ese número de loop, se registra
+#     desde dentro con LOOP_CTL_ADD (ioctl 0x4C80; exige
+#     privileged) y se reintenta el attach.
+#   - PROHIBIDO 'losetup -D': es global y desmontaría también
+#     los discos de los OTROS nodos.
+#   - wipefs al final: cada arranque nace limpio; una práctica
+#     a medias de ayer no contamina la de hoy.
+#   - set -e: cualquier fallo corta el script entero — un nodo
+#     con medio disco adjunto es peor que un nodo sin discos.
+# ============================================================
 set -e
 DISK_DIR="/opt/lvm_disks"; mkdir -p "$DISK_DIR"
 

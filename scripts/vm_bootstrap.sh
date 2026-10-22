@@ -1,11 +1,27 @@
 #!/bin/bash
-# ==========================================
-#  RHCE LAB - Bootstrap del host (MV)
-#  Instala Docker Engine + compose v2 y los
-#  loop devices del lab (discos LVM fake)
-#  en Rocky/Alma/RHEL/CentOS 9-10 (EL).
-#  Idempotente: re-lanzable sin dano.
-# ==========================================
+# ============================================================
+#  SCRIPTS/VM_BOOTSTRAP.SH — Bootstrap del host (máquina virtual)
+# ------------------------------------------------------------
+#  Prepara una MV Rocky/Alma/RHEL/CentOS 9-10 (EL) recién
+#  instalada para el laboratorio: Docker Engine + compose v2,
+#  PyYAML (para los exámenes --random) y los loop devices de
+#  los discos LVM fake. Idempotente: re-lanzable sin daño.
+#
+#  LAS 7 FASES:
+#   1) Sistema — verifica distro EL 9/10 y root.
+#   2) Limpieza — fuera docker/podman de distro (chocan con
+#                 docker-ce).
+#   3) Repo — docker-ce oficial para EL.
+#   4) Instalación — engine + plugins + PyYAML.
+#   5) Servicio — docker.service habilitado y arrancado.
+#   6) Verificación — dockerd responde, compose v2, loop-control
+#                 y cgroup v2 (requisitos del lab).
+#   7) Loops — registra /dev/loop0-15 en el kernel y los
+#                 MANTIENE con la unidad rhce-lab-loop: EL10 no
+#                 los crea al arrancar (el kernel de WSL2 sí;
+#                 por eso el lab funcionaba en WSL y reventaba
+#                 en la MV hasta esta unidad).
+# ============================================================
 set -u
 
 fail() { echo "[FAIL] $*"; exit 1; }

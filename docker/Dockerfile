@@ -1,17 +1,30 @@
 # ============================================================
-#  🐳 RHCE LAB — IMAGEN BASE DE LOS 4 NODOS
+#  RHCE LAB — IMAGEN BASE DE LOS 4 NODOS
 # ------------------------------------------------------------
 #  Sistema : AlmaLinux 10 (binario compatible RHEL 10)
 #  Motor   : systemd como PID 1 (contenedor "real-like")
 #  Stack   : Ansible Core 2.16 + LVM2 + SELinux tools + Cronie
 #
 #  NOTAS DE DISEÑO:
-#   - Los 4 contenedores (control + node1..3) usan ESTA misma
-#     imagen: el rol de "control" lo da el docker-compose.
-#   - El usuario 'ansible' (wheel + NOPASSWD) emula al usuario
-#     de examen del EX294 real.
-#   - firewalld se instala y habilita, pero los playbooks lo
-#     usan en modo 'offline' (ver README.md (seccion Notas tecnicas)).
+#   - UNA sola imagen para control + node1..3: el rol de cada
+#     nodo no lo decide la imagen, sino docker-compose (nombre,
+#     IP fija, volúmenes). Un solo build, cuatro nodos.
+#   - systemd como PID 1 (CMD /usr/sbin/init): los playbooks
+#     ejercitan systemctl contra servicios de verdad, como en
+#     el EX294; sin init los contenedores serían cajas vacías y
+#     media batería del lab no tendría sentido.
+#   - Usuario 'ansible' (wheel + NOPASSWD): emula al alumno del
+#     examen real, con become sin contraseña.
+#   - firewalld instalado y HABILITADO a propósito aunque no
+#     filtra tráfico: 'systemctl is-enabled firewalld' debe dar
+#     'enabled' (lo exige la Fase 1 de ./lab.sh test) y los
+#     playbooks lo usan como servicio gestionable.
+#   - Ansible 2.16 por pip (el dnf de Alma 10 no fija versión) y
+#     colecciones del examen preinstaladas: el alumno no depende
+#     de galaxy durante el lab.
+#   - Los discos LVM fake nacen en esta imagen (secciones 5-7):
+#     fake-disks.service + setup-disks.sh dejan a cada nodo SU
+#     pareja de /dev/loopN en cada arranque.
 # ============================================================
 
 FROM almalinux:10
@@ -80,9 +93,10 @@ RUN useradd -m -s /bin/bash ansible && \
 
 # ------------------------------------------------------------
 # 5) SERVICIOS HABILITADOS AL ARRANQUE
-#    🔧 FIX BUG 2: firewalld añadido al 'enable'. El daemon no
-#    corre (modo offline), pero así 'systemctl is-enabled' =
-#    'enabled' y la Fase 1 de ./lab.sh test pasa correctamente.
+#    firewalld entra en el 'enable' A PROPÓSITO: su daemon no
+#    filtra tráfico real, pero así 'systemctl is-enabled
+#    firewalld' = 'enabled', justo lo que exige la Fase 1 de
+#    ./lab.sh test (y los enunciados tipo examen).
 # ------------------------------------------------------------
 RUN systemctl enable sshd crond firewalld
 

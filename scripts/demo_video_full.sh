@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # ============================================================================
-# demo_video_full.sh - v1.1.2 - DEMO COMPLETA: dependencias + laboratorio
+# SCRIPTS/DEMO_VIDEO_FULL.SH — Demo completa: host + laboratorio
 #
-# SECCION 0 (nueva): auto-provisiona el host via scripts/vm_bootstrap.sh:
-#   docker-ce + compose plugin, python3 + PyYAML, unidad rhce-lab-loop.
-#   FIX10: ademas crea ansible/files/.vault_pass si falta (el repo lo ignora
-#   a proposito en .gitignore -> un clone fresco no lo trae; lo necesitan
-#   el smoke 5/5 y ansible-vault).
-# Despues delega en scripts/demo_video.sh (secciones 1-7 del guion original).
-# PACING y AUTO se respetan (defecto 1/1). Idempotente: si ya esta instalado,
-# la seccion 0 solo verifica y pasa adelante en segundos.
+# Punto de entrada ÚNICO para grabar la demo en una máquina virgen:
+# primero provisiona el host (sección 0) y después delega el guion
+# en scripts/demo_video.sh (secciones 1-7).
 #
-# Uso:   bash /root/RHCE_Lab/scripts/demo_video_full.sh          (grabacion)
-#        PACING=0 bash /root/RHCE_Lab/scripts/demo_video_full.sh (ensayo)
+# SECCIÓN 0 — provisión vía scripts/vm_bootstrap.sh:
+#   docker-ce + compose plugin, python3 + PyYAML y la unidad
+#   rhce-lab-loop (discos loop persistentes). Además crea
+#   ansible/files/.vault_pass si falta: el repo lo ignora A
+#   PROPÓSITO en .gitignore (un clone fresco no lo trae) y sin
+#   él fallan el smoke check 5/5 y ansible-vault.
+#
+# Idempotente: si ya está instalado, la sección 0 solo verifica y
+# avanza en segundos. PACING y AUTO se respetan (defecto 1/1).
+#
+# Uso:   bash scripts/demo_video_full.sh            (grabación)
+#        PACING=0 bash scripts/demo_video_full.sh   (ensayo)
 # ============================================================================
 set -uo pipefail
 
@@ -61,7 +66,7 @@ tstamp; echo -n "Discos loop: "
 [ -e /dev/loop0 ] && lsblk -ndo NAME,SIZE /dev/loop0 && echo "     [OK] listo para el laboratorio" || echo "[i] se crearan al arrancar"
 echo
 
-# --- FIX10: .vault_pass (gitignored a proposito, no viaja en el repo) --------
+# --- .vault_pass (gitignored a propósito, no viaja en el repo) -------------
 # Sin ese archivo fallan el smoke test (check 5/5) y ansible-vault (seccion 4).
 tstamp; echo -n "Vault (.vault_pass): "
 VP="$SCRIPT_DIR/../ansible/files/.vault_pass"

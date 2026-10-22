@@ -1,20 +1,35 @@
 #!/bin/bash
 # ============================================================
-#  RHCE LAB - Guion automatizado para grabar el video
-#  Un solo comando lanza todo el flujo, con pausas de video
-#  y marcas de tiempo T+mm:ss en pantalla.
+#  SCRIPTS/DEMO_VIDEO.SH — Guion automatizado de la grabación
+# ------------------------------------------------------------
+#  Un solo comando recorre la demo COMPLETA del laboratorio
+#  (host -> arranque -> smoke -> vault/discos -> examen ->
+#  corrección), con marcas T+mm:ss en pantalla para facilitar
+#  el montaje del vídeo después.
 #
-#  Uso:
-#    PACING=1 ./scripts/demo_video.sh   ritmo normal (~5-6 min)
-#    PACING=2 ./scripts/demo_video.sh   ritmo lento (mucha narracion)
-#    PACING=0 ./scripts/demo_video.sh   ensayo rapido (sin pausas)
-#    AUTO=1 ./scripts/demo_video.sh     sin pausa interactiva
+#  USO (variables de ambiente, todas opcionales):
+#    PACING=1  ritmo normal (~5-6 min de grabación)
+#    PACING=2  ritmo lento (mucha narración en directo)
+#    PACING=0  ensayo rápido (sin pausas)
+#    AUTO=1    sin la pausa interactiva de la sección examen
 #
-#  Ctrl+C aborta en cualquier momento.
+#  DISEÑO:
+#   - banner() y cmd() imprimen el comando en verde y LUEGO lo
+#     ejecutan: la terminal graba piezas listas para el corte.
+#   - ts() marca T+mm:ss desde el arranque del guion.
+#   - Fallbacks: si falta smoke_test.sh o PyYAML en el host, la
+#     demo sigue con comprobaciones básicas inline (no se cae).
+#   - Sección 5: pausa interactiva para resolver tareas en vivo
+#     desde otro terminal; ENTER pasa a la corrección.
+#   - Ctrl+C aborta en cualquier momento sin dejar el lab
+#     raro: todo lo ejecutado es idempotente.
+#  NOTA (excepción funcional del lote 8): el cd era ~/RHCE_Lab
+#  absoluto y rompía la cadena desde demo_video_full.sh en
+#  cualquier otra ruta; ahora es relativo al repo.
 # ============================================================
 set -u
 P="${PACING:-1}"
-cd ~/RHCE_Lab || { echo "[FAIL] no encuentro ~/RHCE_Lab"; exit 1; }
+cd "$(dirname "$0")/.." || { echo "[FAIL] no encuentro la raíz del repo"; exit 1; }
 
 T0=$(date +%s)
 ts() { local e=$(( $(date +%s) - T0 )); printf 'T+%02d:%02d' $((e/60)) $((e%60)); }
