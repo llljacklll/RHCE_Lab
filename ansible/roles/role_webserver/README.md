@@ -1,4 +1,4 @@
-# 🎭 role_webserver
+# role_webserver
 
 Rol de referencia del RHCE Lab que despliega un servidor Apache
 configurable 100% mediante dos variables.

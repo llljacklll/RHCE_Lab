@@ -9,13 +9,13 @@
 #    task_4 → Usuarios 'web01' y 'web02' con un loop Jinja2
 #    task_5 → Cron de root: 'logger ExamenRHCE' cada 5 minutos
 #
-#  ⚠️  REQUIERE VAULT (files/secrets.yml está encriptado):
+#  REQUIERE VAULT (files/secrets.yml está encriptado):
 #      ./lab.sh run --vault exam_003.yml
 #      Contraseña del vault del laboratorio: RhceLab2026
 #      (la contraseña del VAULT no es lo mismo que el VALOR de
 #       db_password, que es 'SecretPassword123')
 #
-#  ⚠️  WORKAROUND LVM EN CONTENEDORES DOCKER (NO TOCAR):
+#  WORKAROUND LVM EN CONTENEDORES DOCKER (NO TOCAR):
 #      Los contenedores no tienen udev → 'lvcreate' falla al
 #      limpiar firmas del dispositivo. Los flags
 #      '--wipesignatures n --zero n' son OBLIGATORIOS aquí.
@@ -61,7 +61,7 @@
       changed_when: false          # Tampoco cuenta como cambio
 
     # 2b) Creación del LV.
-    #     ⚠️ '--wipesignatures n --zero n' = workaround Docker.
+    #     NOTA: '--wipesignatures n --zero n' = workaround Docker.
     - name: "task_2 | Crear lv_datos de 500MB (flags Docker)"
       ansible.builtin.command: >
         lvcreate -L 500M -n lv_datos vg_exam
@@ -78,7 +78,7 @@
     # task_3 :: /opt/app/config.txt desde el VAULT
     # include_vars carga el fichero ENCRIPTADO: por eso este
     # playbook se ejecuta con --vault (pide la contraseña).
-    # Ruta: playbooks/../files/secrets.yml (constraint #3).
+    # Ruta: playbooks/../files/secrets.yml (ruta fija del laboratorio).
     # ========================================================
     - name: "task_3 | Cargar variables del Vault (secrets.yml)"
       ansible.builtin.include_vars:
