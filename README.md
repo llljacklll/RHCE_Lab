@@ -1,4 +1,4 @@
-# 🚀 RHCE Lab — Simulador del examen EX294 (Red Hat Certified Engineer)
+# RHCE Lab — Simulador del examen EX294 (Red Hat Certified Engineer)
 
 Simulador completo del examen de certificación **RHCE (EX294)** basado en
 **Ansible Automation**, ejecutado 100% sobre contenedores Docker para ofrecer
@@ -11,19 +11,19 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 
 ---
 
-## ✨ Características
+## Características
 
 | Pilar | Descripción |
 |---|---|
-| 🐳 Infraestructura real | 4 contenedores con systemd, IPs fijas (172.20.0.10-13) y red dedicada |
-| 🧠 Corrección modular | Plugins en `core/checkers/` validan cada tarea en los 3 nodos |
-| 🎲 Exámenes aleatorios | `./lab.sh exam --random N` genera exámenes únicos desde `scenarios/task_pool.yml` |
-| ⏱️ Anti-trampas | Cronómetro persistente en `state/exam_status.yml`: si expira, `grade` se bloquea |
-| 📝 Logs persistentes | Cada corrección deja un informe en `state/results/` |
-| 💾 Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 512MB (1GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
-| 🚀 Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
+| Infraestructura real | 4 contenedores con systemd, IPs fijas (172.20.0.10-13) y red dedicada |
+| Corrección modular | Plugins en `core/checkers/` validan cada tarea en los 3 nodos |
+| Exámenes aleatorios | `./lab.sh exam --random N` genera exámenes únicos desde `scenarios/task_pool.yml` |
+| Anti-trampas | Cronómetro persistente en `state/exam_status.yml`: si expira, `grade` se bloquea |
+| Logs persistentes | Cada corrección deja un informe en `state/results/` |
+| Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 512MB (1GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
+| Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
 
-## 📋 Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
+## Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
 
 El escenario soportado es una **MV de la familia EL 9-10** con:
 
@@ -61,7 +61,7 @@ detecta dependencias faltantes y lo lanza automáticamente.
 > modo offline) y la gestión de loop devices difiere de la de una MV.
 > Usa una MV Rocky 10: se levanta en minutos con cualquier hipervisor.
 
-## 🔧 Instalación desde cero (MV limpia o snapshot revertido)
+## Instalación desde cero (MV limpia o snapshot revertido)
 
 ```bash
 # 1) git y credenciales
@@ -84,7 +84,7 @@ bash scripts/smoke_test.sh
 > idempotente y re-lanzable) por si prefieres dejar el host a punto antes.
 > Para volver a un **snapshot antiguo** de la MV, mira la sección siguiente.
 
-## ♻️ Restaurar la MV / recuperar un snapshot
+## Restaurar la MV / recuperar un snapshot
 
 Flujo probado de punta a punta con una MV restaurada **sin Docker y sin
 /dev/loopN**: el lab auto-bootstrapea el host, recompila desde cero y
@@ -117,14 +117,14 @@ git pull --ff-only
   aplica por nodo → los checkers LVM **fallan honestos** hasta que crees la VG.
 - Si falta algo en el host (Docker, loops...), lab.sh lanza `vm_bootstrap.sh`.
 
-## ⚡ Inicio rápido (host ya preparado)
+## Inicio rápido (host ya preparado)
 
 ```bash
 ./lab.sh up     # levantar (.vault_pass se crea solo si falta)
 ./lab.sh test   # batería de pruebas automática
 ```
 
-## 🎮 Uso de la CLI
+## Uso de la CLI
 
 | Comando | Descripción |
 |---|---|
@@ -145,19 +145,19 @@ git pull --ff-only
 | `./lab.sh test` | Batería de pruebas automática |
 | `./lab.sh up --dns 1.1.1.1,8.8.8.8` | Forzar DNS de Docker (redes corporativas) |
 
-## 📝 Flujo de un examen
+## Flujo de un examen
 
 1. **Cargar**: `./lab.sh exam hard/exam_003.yml` (o `--random N`).
 2. **Resolver**: escribe TU playbook en `ansible/playbooks/` (p. ej.
    `mi_solucion.yml`) y ejecútalo con `./lab.sh run mi_solucion.yml`.
 
-   > ⚠️ Los ficheros `exam_00X.yml` existentes son **soluciones de
+   > Los ficheros `exam_00X.yml` existentes son **soluciones de
    > referencia** (spoilers). Para practicar de verdad, parte de cero.
 
 3. **Corregir**: `./lab.sh grade` → resultado por tareas + informe en
    `state/results/`. Si el cronómetro expiró, la corrección se bloquea.
 
-## 🔐 El Vault del laboratorio
+## El Vault del laboratorio
 
 `ansible/files/secrets.yml` (encriptado, viaja en git) contiene cifrada
 la variable `db_password`, usada por el examen hard. La contraseña vive
@@ -171,7 +171,7 @@ automáticamente si falta).
 
 Ejecución de exámenes con vault: `./lab.sh run --vault exam_003.yml`
 
-## 🧪 Smoke test completo (primera sesión)
+## Smoke test completo (primera sesión)
 
 ```bash
 bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vault
@@ -194,7 +194,7 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 ./lab.sh grade
 ```
 
-## 🛠️ Notas técnicas
+## Notas técnicas
 
 - **Autoarranque (DEP-GUARD)**: al ejecutar cualquier `lab.sh`, si faltan
   Docker, compose, pyyaml o `/dev/loop0`, se lanza `vm_bootstrap.sh`
@@ -221,7 +221,7 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 - **DNS**: la red es fija (172.20.0.0/24) para evitar caídas por caché
   de DNS de Docker. En redes corporativas: `./lab.sh up --dns <ips>`.
 
-## 🆕 Novedades de v1.2.0 (autoarranque total)
+## Novedades de v1.2.0 (autoarranque total)
 
 - **DEP-GUARD**: `lab.sh` detecta dependencias del host faltantes y
   auto-ejecuta `vm_bootstrap.sh` (probado en una MV restaurada sin Docker).
@@ -240,13 +240,13 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
   con LVM multi-nodo sin choques de dispositivo).
 - **Flujo de recuperación documentado** (restaurar MV → `pull` → `reset`).
 
-## 🗺️ Roadmap
+## Roadmap
 
-- [ ] Tareas de Block/Rescue en el task pool
-- [ ] Checker fino de SELinux (fcontext real)
+- [x] Tareas de Block/Rescue en el task pool
+- [x] Checker fino de SELinux (fcontext real)
 - [ ] Más exámenes estáticos
 
-## 📜 Licencia
+## Licencia
 
 CC BY-NC-SA 4.0 — ver [LICENSE](LICENSE).
 
