@@ -36,10 +36,10 @@ function print_banner() {
     local control_status
     if docker ps --format '{{.Names}}' | grep -q "^control$"; then
         status="${GREEN}UP${NC}"
-        control_status="${GREEN}✔${NC} control (master)"
+        control_status="${GREEN}[OK]${NC} control (master)"
     else
         status="${RED}DOWN${NC}"
-        control_status="✖ control (down)"
+        control_status="${RED}[X]${NC} control (down)"
     fi
 
     # ---------- Nodos managed levantados ----------
@@ -81,9 +81,9 @@ function print_banner() {
     echo -e "${CYAN}Node Status:${NC}"
     for node in node1 node2 node3; do
         if docker ps --format '{{.Names}}' | grep -q "^${node}$"; then
-            echo -e " ${GREEN}✔${NC} ${node} (running)"
+            echo -e " ${GREEN}[OK]${NC} ${node} (running)"
         else
-            echo -e " ${RED}✖${NC} ${node} (down)"
+            echo -e " ${RED}[X]${NC} ${node} (down)"
         fi
     done
     echo ""
@@ -99,18 +99,18 @@ function print_banner() {
     echo -e "${CYAN}Service Checks (node1 - sample):${NC}"
     for svc in sshd httpd; do
         if docker exec node1 systemctl is-active --quiet "$svc" 2>/dev/null; then
-            echo -e " ${GREEN}✔${NC} $svc running"
+            echo -e " ${GREEN}[OK]${NC} $svc running"
         else
-            echo -e " ${RED}✖${NC} $svc stopped"
+            echo -e " ${RED}[X]${NC} $svc stopped"
         fi
     done
     # firewalld: se comprueba INSTALACIÓN (rpm -q), no estado del
     # servicio — de ahí el "offline-mode": el paquete está presente,
     # pero el servicio no se gestiona dentro de los contenedores.
     if docker exec node1 rpm -q firewalld >/dev/null 2>&1; then
-        echo -e " ${GREEN}✔${NC} firewalld (offline-mode)"
+        echo -e " ${GREEN}[OK]${NC} firewalld (offline-mode)"
     else
-        echo -e " ${RED}✖${NC} firewalld not installed"
+        echo -e " ${RED}[X]${NC} firewalld not installed"
     fi
     echo ""
 
