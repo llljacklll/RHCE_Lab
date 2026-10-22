@@ -1,9 +1,10 @@
 #!/bin/bash
 # ============================================================
-#  Checker block/rescue/always — NUEVO (v1.3.0)
-# ------------------------------------------------------------
-#  La tarea: el alumno crea /home/ansible/block_rescue.yml en
-#  el nodo control y lo ejecuta contra los nodos gestionados:
+#  core/checkers/check_block_rescue.sh — plugin: block/rescue
+#  ------------------------------------------------------------
+#  LA TAREA QUE CORRIGE: el alumno crea /home/ansible/
+#  block_rescue.yml en el nodo control y lo ejecuta contra
+#  los nodos gestionados:
 #    block  : instala un paquete que NO existe (falla a propósito)
 #    rescue : instala el paquete $name (el "plan B")
 #    always : crea el marcador $path en cada nodo
@@ -20,6 +21,14 @@
 #    3) el marcador $path existe en $node         (always funcionó)
 #
 #  Prístino => FAIL garantizado (no hay playbook => honesto).
+#  ------------------------------------------------------------
+#  DETALLE PROPIO DE ESTE PLUGIN: es el único que mira al
+#  CONTENEDOR CONTROL (los demás solo al nodo que les pasa
+#  _run_check). Sin un $ctrl posicional, se localiza por
+#  nombre: CONTROL_NODE si las constantes lo definen y, si
+#  no, el primer contenedor en marcha cuyo nombre contenga
+#  "control". Sin control no hay nada que corregir: FAIL con
+#  aviso por stderr (nunca en silencio).
 # ============================================================
 local node="$1" pkg="$2" marker="$3"
 local pb="/home/ansible/block_rescue.yml"

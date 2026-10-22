@@ -1,4 +1,20 @@
 #!/bin/bash
-# Valida una entrada en crontab
+# ============================================================
+#  core/checkers/check_cron.sh — plugin: entradas de crontab
+# ------------------------------------------------------------
+#  QUÉ VALIDA: que el crontab de un usuario contenga una
+#  línea de trabajo concreta.
+#    $1 = node .. contenedor a comprobar
+#    $2 = name .. la LÍNEA completa del cron tal y como debe
+#                  aparecer (p. ej. "*/5 * * * * logger hola")
+#    $3 = path .. usuario dueño del crontab, OPCIONAL
+#                  (vacío -> "ansible", el usuario de trabajo
+#                  del laboratorio)
+#  SALIDA: "OK"/"FAIL" (una línea, stdout).
+#  DETALLE: grep -qF compara CADENA LITERAL — los * y / de
+#  una expresión cron son metacaracteres de regex y con -F
+#  no se interpretan. Y se exige la línea exacta: no vale
+#  "algo parecido".
+# ============================================================
 local node="$1"; local job_str="$2"; local user="${3:-ansible}"
 docker exec "$node" crontab -l -u "$user" 2>/dev/null | grep -qF "$job_str" && echo "OK" || echo "FAIL"

@@ -1,12 +1,13 @@
 #!/bin/bash
 # ============================================================
-#  Checker SELinux fcontext — v2 "fina" (v1.3.0)
-# ------------------------------------------------------------
-#  ANTES (v1.2.0): comparaba el xattr security.selinux con el
-#  tipo esperado. Dentro del contenedor ese xattr SIEMPRE es el
-#  del runtime Docker (container_ro_file_t, lo confirmó tu
-#  getfattr), así que caía al fallback "existe => OK": un check
-#  cosmético que no demostraba nada.
+#  core/checkers/check_selinux_fcontext.sh — plugin: fcontext
+#  ------------------------------------------------------------
+#  POR QUÉ ESTE CHECKER ES "FINO" (historia del arreglo):
+#  la primera versión comparaba el xattr security.selinux con
+#  el tipo esperado. Dentro del contenedor ese xattr SIEMPRE
+#  es el del runtime Docker (container_ro_file_t, confirmado
+#  con getfattr), así que acababa cayendo al fallback
+#  "existe => OK": un check cosmético que no demostraba nada.
 #
 #  AHORA: valida a nivel de POLICY, que dentro del contenedor
 #  SÍ es real y persistente aunque el kernel no cargue SELinux:

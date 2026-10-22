@@ -1,6 +1,22 @@
 #!/bin/bash
-# Valida que un punto de montaje este activo (origen opcional via $3,
-# acepta forma /dev/vg/lv y su canonica /dev/mapper/vg-lv)
+# ============================================================
+#  core/checkers/check_mount.sh — plugin: montajes activos
+# ------------------------------------------------------------
+#  QUÉ VALIDA: que un punto de montaje esté ACTIVO, con opción
+#  a exigir el origen exacto.
+#    $1 = node .. contenedor a comprobar
+#    $2 = name .. punto de montaje (p. ej. /mnt/datos)
+#    $3 = path .. origen esperado, OPCIONAL: acepta las dos
+#                  grafías del mismo dispositivo (/dev/vg/lv y
+#                  la canónica /dev/mapper/vg-lv)
+#  SALIDA: "OK"/"FAIL" (una línea, stdout).
+#  POR QUÉ LAS DOS GRAFÍAS: el kernel muestra el origen como
+#  /dev/mapper/vg-lv (nombre device-mapper) mientras el
+#  alumno — y el YAML — escriben /dev/vg/lv. La conversión
+#  con sed (quitar /dev/, cambiar / por -) pasa de una a la
+#  otra y la comparación admite AMBAS. Sin origen ($3 vacío):
+#  montado = OK, da igual desde qué dispositivo.
+# ============================================================
 local node="$1"; local mpoint="$2"; local src="${3:-}"
 local out
 out=$(docker exec "$node" findmnt -n -o SOURCE "$mpoint" 2>/dev/null)
