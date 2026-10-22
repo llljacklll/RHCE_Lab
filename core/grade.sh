@@ -143,7 +143,7 @@ function lab_grade() {
 # ------------------------------------------------------------
 function _print_expired_error() {
     echo -e "${RED}=========================================${NC}"
-    echo -e "${RED}  ❌ EXAMEN EXPIRADO${NC}"
+    echo -e "${RED}  EXAMEN EXPIRADO${NC}"
     echo -e "${RED}=========================================${NC}"
     echo -e "${RED} El tiempo límite de $1 minutos ha sido superado.${NC}"
     echo -e "${RED} Simulador detenido para evitar trampas.${NC}"
