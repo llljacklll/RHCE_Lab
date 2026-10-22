@@ -14,6 +14,17 @@
 #  REGLA DE ORO DEL PARSER (core/grade.sh):
 #    Comentarios SOLO en línea completa, nunca al final de una
 #    línea de datos (el parser leería el resto de la línea).
+#
+#  HISTORIAL DE LA MIGRACIÓN LVM:
+#    Este examen nació (d7a57b0) antes de que el lab adoptara
+#    la arquitectura por nodo (465b60c: device-mapper es GLOBAL
+#    al kernel compartido y dos VG con el mismo nombre chocan
+#    en /dev/mapper; además el filtro LVM de cada nodo esconde
+#    los loops de los demás: /dev/loop0 solo es visible en
+#    node1). Sus tareas LVM aún pedían un 'vg_exam' idéntico
+#    en los tres nodos sobre /dev/loop0: inaprobable por
+#    construcción. Migrado al patrón del pool: VG vg_<nodo>
+#    sobre el disco extra de cada nodo + token __NODE__.
 # ============================================================
 
 ---
@@ -24,14 +35,14 @@ time_limit: 45
 
 tasks:
 
-  # LVM: VG sobre el disco raw loop0 (sin particiones: los loop
-  # devices de Docker no soportan /dev/loop0p1)
+  # LVM: VG por nodo sobre el disco extra raw (sin particiones:
+  # los loop devices de Docker no soportan /dev/loop0p1)
   - id: task_1
-    description: "Crear un Volume Group llamado 'vg_exam' sobre /dev/loop0"
+    description: "Crear un Volume Group llamado 'vg_<nodo>' sobre el disco extra de cada nodo (node1:/dev/loop0, node2:/dev/loop2, node3:/dev/loop4); ejemplo: en node1 debe llamarse vg_node1"
 
-  # LVM: Logical Volume + filesystem XFS
+  # LVM: Logical Volume + filesystem XFS dentro del VG del nodo
   - id: task_2
-    description: "Crear un Logical Volume de 500MB llamado 'lv_datos' en 'vg_exam' y formatearlo en XFS"
+    description: "Crear un Logical Volume de 500MB llamado 'lv_datos' dentro del VG del nodo ('vg_<nodo>') y formatearlo en XFS"
 
   # Vault: la contraseña del vault se entrega en el enunciado,
   # igual que en el EX294 real
@@ -48,15 +59,16 @@ tasks:
 
 checks:
 
-  # task_1 → existencia del VG (lvs /dev/vg_exam)
+  # task_1 → VG por nodo (el token __NODE__ lo expande _run_check
+  # a vg_node1, vg_node2, vg_node3)
   - task_id: task_1
     type: lvm
-    name: /dev/vg_exam
+    name: /dev/vg___NODE__
 
-  # task_2 → existencia del LV (lvs /dev/vg_exam/lv_datos)
+  # task_2 → LV dentro del VG del nodo
   - task_id: task_2
     type: lvm
-    name: /dev/vg_exam/lv_datos
+    name: /dev/vg___NODE__/lv_datos
 
   # task_3 → el fichero debe contener el valor secreto
   - task_id: task_3
