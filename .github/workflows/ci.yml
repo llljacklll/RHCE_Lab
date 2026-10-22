@@ -1,3 +1,37 @@
+# ============================================================
+#  .GITHUB/WORKFLOWS/CI.YML — Integración continua del repositorio
+# ------------------------------------------------------------
+#  QUÉ ES: la batería que GitHub Actions corre en cada push a
+#  'main', en cada pull_request y bajo demanda (workflow_dispatch).
+#  4 puertas, todas de solo lectura: aquí no se ejecuta nada del
+#  laboratorio, solo se valida el estado del repo.
+#
+#  PUERTA 1/4 — bash -n sobre TODOS los .sh (find -print0):
+#    sintaxis sin ejecutar. Cubre también directorios ocultos
+#    porque find sí baja a los que empiezan por punto (glob no).
+#  PUERTA 2/4 — PyYAML sobre todos los .yml/.yaml:
+#    parseo con safe_load_all; los vault cifrados se saltan
+#    (detecta 'ANSIBLE_VAULT' en los primeros 200 bytes).
+#    NOTA C: glob(**) de Python NO baja a directorios ocultos,
+#    así que los YAML de .github/ quedaban fuera de SU propia
+#    batería (un workflow roto pasaba el CI sin acusarse). El
+#    glob explícito de esta puerta lo corrige.
+#  PUERTA 3/4 — heredocs de Python embebidos en los .sh:
+#    detecta 'pythonN - << DELIM', sustituye $(cmd), ${VAR} y
+#    $VAR por '3' (para que compile) y compila el cuerpo con
+#    compile(). LIMITACIÓN CONOCIDA: exige el terminador en la
+#    columna 0; un heredoc indentado dentro de un if/for no
+#    casa y queda fuera del radar (ni se audita ni falla), la
+#    misma familia de hueco que ui/*.sh en scripts/audit_py.sh.
+#  PUERTA 4/4 — integridad checks <-> checkers: cada 'type' de
+#    scenarios/**/*.yml (tanto el 'checks' de cabecera como los
+#    'tasks[].checks') debe tener su core/checkers/check_<type>.sh.
+#
+#  TRAMPA YAML 1.1: el 'on:' sin comillas de arriba es booleano
+#  True para PyYAML (safe_load devuelve {True: {...}, 'jobs': ...}).
+#  GitHub Actions lo parsea correctamente; la trampa solo muerde
+#  a quien valide el fichero a mano buscando dict['on'].
+# ============================================================
 name: CI
 
 on:
@@ -29,7 +63,7 @@ jobs:
           python3 - << 'PYCI'
           import glob, sys, yaml
           bad = 0
-          files = sorted(set(glob.glob('**/*.yml', recursive=True) + glob.glob('**/*.yaml', recursive=True)))
+          files = sorted(set(glob.glob('**/*.yml', recursive=True) + glob.glob('**/*.yaml', recursive=True) + glob.glob('.github/workflows/*.yml') + glob.glob('.github/workflows/*.yaml')))
           for f in files:
               try:
                   if 'ANSIBLE_VAULT' in open(f, encoding='utf-8', errors='ignore').read(200):
