@@ -330,7 +330,7 @@ function _print_grade_result() {
     if [ "$passed" -eq "$total" ]; then
         echo -e "${GREEN}¡ENHORABUENA, EXAMEN APROBADO!${NC}"
     else
-        echo -e "${RED}Examen suspendido. Revisa los puntos fallinos.${NC}"
+        echo -e "${RED}Examen suspendido. Revisa los puntos fallidos.${NC}"
     fi
 }
 
