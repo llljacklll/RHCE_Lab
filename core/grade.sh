@@ -40,6 +40,14 @@ function lab_grade() {
     # o el examen activo. Ver en _resolve_exam_file el detalle
     # de por qué el error va a stderr.
     exam_file=$(_resolve_exam_file)
+    # _resolve_exam_file aborta por stderr desde la subshell del $(...)
+    # y deja stdout VACIO: sin este guard el flujo seguiria con
+    # exam_file="" hasta chocar con el anti-falso-aprobado, que
+    # imprimiria "0 checks / YAML corrupto" cuando lo real es que
+    # NO HAY examen activo (la verruga conocida de la bateria).
+    if [ -z "$exam_file" ]; then
+        exit 1
+    fi
     # Los checks hacen docker exec contra los nodos: sin el
     # lab arriba no hay nada que verificar.
     require_control_running
@@ -311,6 +319,10 @@ function _run_check() {
         result=$(source "$CHECKERS_DIR/check_${check_type}.sh" "$node" "$cname" "$cpath")
         if [ "$result" != "OK" ]; then
             all_ok=false
+            # La razon del fallo viaja en $result (stdout del checker):
+            # 2 primeras lineas, indentadas y con el nodo. Sin esto el
+            # reporte dice FAIL sin explicar POR QUE.
+            echo "$result" | head -2 | sed "s/^/       [$node] /"
             break              # Con un fallo basta: no iterar más
         fi
     done
