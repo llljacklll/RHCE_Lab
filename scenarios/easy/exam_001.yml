@@ -1,11 +1,18 @@
 # ============================================================
-#  EXAMEN 001 (DIFICULTAD: EASY)
-#  Título: "Apache Básico y Usuarios"
+#  SCENARIOS/EASY/EXAM_001.YML — Examen fijo (EASY):
+#  "Apache Básico y Usuarios"
 # ------------------------------------------------------------
+#  QUÉ EVALÚA: el mínimo vital del EX294 — instalar un paquete
+#  (package), crear usuarios (user) y dejar un servicio
+#  habilitado y arrancado (service), todo en los nodos.
+#
 #  Formato del fichero:
+#   - id / difficulty / title / time_limit → metadatos que lee
+#     lab.sh (time_limit en minutos).
 #   - tasks  → lo que ve el alumno en pantalla
 #   - checks → lo que ejecuta el motor de corrección
-#              (type → core/checkers/check_<type>.sh)
+#              (type → core/checkers/check_<type>.sh);
+#              cada check referencia su tarea por task_id.
 # ============================================================
 
 ---

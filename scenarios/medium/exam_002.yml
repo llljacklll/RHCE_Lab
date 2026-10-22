@@ -1,12 +1,15 @@
 # ============================================================
-#  📚 EXAMEN MEDIO — "Roles, Variables y Jinja2"
-# ============================================================
+#  SCENARIOS/MEDIUM/EXAM_002.YML — Examen fijo (MEDIUM):
+#  "Roles, Variables y Jinja2"
+# ------------------------------------------------------------
 #  OBJETIVO DIDÁCTICO:
 #    El alumno debe aplicar el rol 'role_webserver' sobrescribiendo
 #    sus defaults con vars de playbook (http_port=8080, owner=Victor)
 #    y verificar el resultado desplegado por las plantillas.
+#    Evalúa la tríada roles → defaults/vars → plantillas Jinja2,
+#    el eje central del EX294 real.
 #
-#  ⚠️ REGLA DE ORO DEL PARSER (core/grade.sh):
+#  REGLA DE ORO DEL PARSER (core/grade.sh):
 #    Los comentarios SIEMPRE en línea completa. NUNCA al final de
 #    una línea de datos (task_id/type/name/...), porque el parser
 #    leería el comentario como parte del valor.

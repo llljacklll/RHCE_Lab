@@ -1,12 +1,17 @@
 # ============================================================
-#  📚 EXAMEN HARD — Simulacro Oficial EX294
-#     (LVM + Ansible Vault + Jinja2 + Cron)
-# ============================================================
+#  SCENARIOS/HARD/EXAM_003.YML — Examen fijo (HARD):
+#  "Simulacro Oficial EX294" (LVM + Ansible Vault + Jinja2 + Cron)
+# ------------------------------------------------------------
+#  QUÉ ES: el examen estrella del laboratorio: reproduce el
+#  elenco típico del EX294 real — storage LVM sobre el disco
+#  extra del nodo, secretos con Ansible Vault, bucles Jinja2
+#  y entradas de cron.
+#
 #  REQUISITOS PREVIOS:
 #    - Vault creado:  ./scripts/create_vault.sh
 #    - Ejecutar con:  ./lab.sh run --vault exam_003.yml
 #
-#  ⚠️ REGLA DE ORO DEL PARSER (core/grade.sh):
+#  REGLA DE ORO DEL PARSER (core/grade.sh):
 #    Comentarios SOLO en línea completa, nunca al final de una
 #    línea de datos (el parser leería el resto de la línea).
 # ============================================================

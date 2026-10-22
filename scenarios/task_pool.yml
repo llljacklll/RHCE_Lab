@@ -1,15 +1,33 @@
-# ========================
-# Banco de Tareas (Aleatorio) - v2 "Task Pack #1"
-# Reglas: cada tarea es AUTOCONTENIDA y CUALQUIER combinacion
-# de tareas del pool es resoluble simultaneamente.
+# ============================================================
+#  SCENARIOS/TASK_POOL.YML — Banco de tareas para exámenes
+#  aleatorios (./lab.sh exam --random N)
+# ------------------------------------------------------------
+#  QUÉ ES: el menú del que el generador elige N tareas para
+#  montar un examen distinto cada vez. NO es un examen en sí:
+#  los exámenes fijos viven en scenarios/<dificultad>/exam_*.yml.
 #
-# [FIX DM-GLOBAL v1.3.2] El registro de device-mapper es
-# GLOBAL al kernel y los 3 nodos comparten kernel: un VG con
-# nombre FIJO solo puede activar sus LV en UN nodo (EBUSY en
-# los otros dos). Por eso las tareas LVM piden 'vg_<nodo>' y
-# sus checks usan el token __NODE__, que core/grade.sh
-# expande al nombre de cada nodo antes de llamar al checker.
-# ============================
+#  REGLAS DEL POOL (por diseño, inviolables):
+#   - Cada tarea es AUTOCONTENIDA: no depende de que otra tarea
+#     del pool haya corrido antes.
+#   - CUALQUIER combinación de tareas es resoluble a la vez:
+#     ninguna pisa el estado que otra necesita (usuarios,
+#     paquetes, ficheros y VGs van siempre a nombres distintos).
+#
+#  DEVICE-MAPPER GLOBAL (por qué las tareas LVM son "raras"):
+#   El registro de device-mapper es GLOBAL al kernel y los 3
+#   nodos comparten kernel: un VG con nombre FIJO solo puede
+#   activar sus LV en UN nodo (EBUSY en los otros dos). Por eso
+#   las tareas LVM piden 'vg_<nodo>' y sus checks usan el
+#   token __NODE__, que core/grade.sh expande al nombre de cada
+#   nodo antes de llamar al checker.
+#
+#  ESQUEMA de cada tarea:
+#   - id          → identificador único de la tarea
+#   - difficulty  → easy | medium | hard (peso del generador)
+#   - description → el enunciado que ve el alumno
+#   - checks      → type/name/path con el contrato de
+#                   core/checkers/ (uno o varios por tarea)
+# ============================================================
 ---
 tasks:
   # ---------- EASY ----------
@@ -116,7 +134,7 @@ tasks:
         name: "/usr/local/bin/backup.sh"
         path: root
 
-  # ================= TASK PACK #2 (v1.3.0) =================
+  # ================= TASK PACK #2 =================
   # SELinux fino: valida la REGLA fcontext a nivel de policy
   # (semanage), no el xattr del runtime. El alumno puede usar
   # community.general.sefcontext (instalada en la imagen) o
