@@ -23,9 +23,9 @@ function print_banner() {
 
     # ---------- Metadatos ----------
     # La versión sale de GIT, no de una constante: el tag si existe
-    # (git tag -a v1.3.3), o el hash corto del commit si no hay tags.
-    # El fallback 'v1.3.3' solo aparece si git no está disponible.
-    local version="$(git -C "$(dirname "$(readlink -f "$0")")" describe --tags --always 2>/dev/null || echo "v1.3.3")"
+    # (git tag -a v1.3.4), o el hash corto del commit si no hay tags.
+    # El fallback 'v1.3.4' solo aparece si git no está disponible.
+    local version="$(git -C "$(dirname "$(readlink -f "$0")")" describe --tags --always 2>/dev/null || echo "v1.3.4")"
     local date_now
     date_now=$(date '+%Y-%m-%d %H:%M:%S')
 
