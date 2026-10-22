@@ -15,7 +15,7 @@
 #      enunciado solo exige existencia.
 #    - become: true: /etc/passwd y /etc/shadow son de root.
 #
-#  VALIDACIÓN: core/checkers/user.sh — UID 2500 exacto en todos los nodos.
+#  VALIDACIÓN: core/checkers/check_user.sh — UID 2500 exacto en todos los nodos.
 # ============================================================================
 - name: Usuario appuser con UID 2500
   hosts: all

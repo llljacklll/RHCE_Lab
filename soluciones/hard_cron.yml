@@ -20,7 +20,7 @@
 #    - Ruta ABSOLUTA '/usr/bin/echo': cron arranca con PATH mínimo; y si
 #      el enunciado da la cadena exacta del job, cópiala LITERAL.
 #
-#  VALIDACIÓN: core/checkers/cron.sh — la línea del job aparece en el
+#  VALIDACIÓN: core/checkers/check_cron.sh — la línea del job aparece en el
 #  crontab del usuario 'ansible' de cada nodo.
 # ============================================================================
 - name: Entrada cron para el usuario ansible

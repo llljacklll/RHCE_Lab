@@ -18,7 +18,7 @@
 #    - 'exit 0': stub silencioso y con éxito — aquí lo que se practica es
 #      la ENTRADA cron, no el backup en sí.
 #
-#  VALIDACIÓN: core/checkers/cron.sh — la línea del job en el crontab de
+#  VALIDACIÓN: core/checkers/check_cron.sh — la línea del job en el crontab de
 #  root de cada nodo.
 # ============================================================================
 - name: Entrada cron para root (+ stub de backup.sh)

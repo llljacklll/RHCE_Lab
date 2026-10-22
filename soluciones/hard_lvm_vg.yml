@@ -25,7 +25,7 @@
 #    - Idempotente: si el VG ya existe, no lo recrea ni toca sus PVs.
 #    - become: true: LVM requiere root en el nodo.
 #
-#  VALIDACIÓN: core/checkers/lvm.sh — 'vgs' muestra vg_<nodo> en cada nodo.
+#  VALIDACIÓN: core/checkers/check_lvm.sh — 'vgs' muestra vg_<nodo> en cada nodo.
 # ============================================================================
 - name: VG vg_<nodo> sobre el disco extra
   hosts: all

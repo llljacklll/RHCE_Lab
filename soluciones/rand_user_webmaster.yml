@@ -11,7 +11,7 @@
 #      nombres aleatorios (webmaster, deployer, ...) a propósito — que se
 #      memorice el PATRÓN, no la respuesta.
 #
-#  VALIDACIÓN: core/checkers/user.sh — 'id webmaster' exit 0 en todos.
+#  VALIDACIÓN: core/checkers/check_user.sh — 'id webmaster' exit 0 en todos.
 # ============================================================================
 - name: Usuario webmaster
   hosts: all

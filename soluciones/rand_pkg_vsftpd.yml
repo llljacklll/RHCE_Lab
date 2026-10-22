@@ -11,7 +11,7 @@
 #    - El paquete se llama 'vsftpd' ("very secure FTP daemon"), tal cual:
 #      'ftp' o 'ftp-server' NO existen como paquete en RHEL/AlmaLinux.
 #
-#  VALIDACIÓN: core/checkers/package.sh — vsftpd instalado en todos.
+#  VALIDACIÓN: core/checkers/check_package.sh — vsftpd instalado en todos.
 # ============================================================================
 - name: Instalar vsftpd
   hosts: all

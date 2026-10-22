@@ -16,18 +16,18 @@ Cada playbook está **comentado a fondo**:
 
 ## Cómo ejecutar una solución
 
-~
+~~~
 docker cp soluciones/<task_id>.yml control:/home/ansible/<task_id>.yml
 docker exec -u ansible control ansible-playbook /home/ansible/<task_id>.yml
-~
+~~~
 
 **Excepción — `hard_block_rescue`**: el enunciado exige la ruta exacta
 `control:/home/ansible/block_rescue.yml`:
 
-~
+~~~
 docker cp soluciones/hard_block_rescue.yml control:/home/ansible/block_rescue.yml
 docker exec -u ansible control ansible-playbook /home/ansible/block_rescue.yml
-~
+~~~
 
 ## Mapa de tareas
 

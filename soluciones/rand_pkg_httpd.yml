@@ -16,7 +16,7 @@
 #    - NO uses 'latest' si el enunciado pide "instalado": 'latest' consulta
 #      repos en cada ejecución y puede ACTUALIZAR (cambio que nadie pidió).
 #
-#  VALIDACIÓN: core/checkers/package.sh — el paquete consta instalado (rpm)
+#  VALIDACIÓN: core/checkers/check_package.sh — el paquete consta instalado (rpm)
 #  en TODOS los nodos del inventario.
 # ============================================================================
 - name: Instalar httpd

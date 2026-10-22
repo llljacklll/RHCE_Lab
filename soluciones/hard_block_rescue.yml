@@ -1,6 +1,6 @@
 # ============================================================================
 #  SOLUCIÓN MODELO — hard_block_rescue                   [dificultad: hard]
-#                     (compatible v1.3.3)
+#                     (Task Pack #2)
 # ----------------------------------------------------------------------------
 #  TAREA: "Con un playbook guardado en control:/home/ansible/block_rescue.yml
 #  (ruta EXIGIDA por el enunciado): un block que intenta instalar un
@@ -20,7 +20,7 @@
 #
 #  DOBLE FUNCIÓN DE ESTE FICHERO:
 #    - Solución de referencia para el alumno.
-#    - PLAY DE PRUEBA del checker (core/checkers/block_rescue.sh): el
+#    - PLAY DE PRUEBA del checker (core/checkers/check_block_rescue.sh): el
 #      checker ejecuta este mismo playbook contra los nodos y comprueba
 #      que /tmp/block_ok aparece en TODOS: demuestra que el rescue y el
 #      always funcionaron de verdad.

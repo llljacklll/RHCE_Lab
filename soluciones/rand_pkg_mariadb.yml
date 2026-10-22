@@ -11,7 +11,7 @@
 #    El enunciado pide "servidor de base de datos": si instalas el cliente,
 #    dnf da exit 0 y el checker pita. Nombres de paquete: AL LITERAL.
 #
-#  VALIDACIÓN: core/checkers/package.sh — mariadb-server en todos los nodos.
+#  VALIDACIÓN: core/checkers/check_package.sh — mariadb-server en todos los nodos.
 # ============================================================================
 - name: Instalar mariadb-server
   hosts: all

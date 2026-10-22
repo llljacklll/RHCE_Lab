@@ -13,7 +13,7 @@
 #    - Sin 'system: true': grupo normal de usuarios (no de sistema).
 #    - become: true: /etc/group y /etc/gshadow son de root.
 #
-#  VALIDACIÓN: core/checkers/group.sh — getent group developers -> GID 3000.
+#  VALIDACIÓN: core/checkers/check_group.sh — getent group developers -> GID 3000.
 # ============================================================================
 - name: Grupo developers
   hosts: all

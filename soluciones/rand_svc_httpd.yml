@@ -17,7 +17,7 @@
 #    - NO hace falta handler+notify: el enunciado no pide "reiniciar si
 #      cambia la configuración" (ese es el caso típico de handlers).
 #
-#  VALIDACIÓN: core/checkers/service.sh — systemctl is-active E is-enabled
+#  VALIDACIÓN: core/checkers/check_service.sh — systemctl is-active E is-enabled
 #  httpd en todos los nodos.
 # ============================================================================
 - name: Servicio httpd habilitado y arrancado

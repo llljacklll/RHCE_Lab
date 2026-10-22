@@ -16,7 +16,7 @@
 #      porque el enunciado solo exige que EXISTA.
 #    - become: true: crear usuarios edita /etc/passwd y /etc/shadow.
 #
-#  VALIDACIÓN: core/checkers/user.sh — 'id deployer' exit 0 en todos.
+#  VALIDACIÓN: core/checkers/check_user.sh — 'id deployer' exit 0 en todos.
 # ============================================================================
 - name: Usuario deployer
   hosts: all

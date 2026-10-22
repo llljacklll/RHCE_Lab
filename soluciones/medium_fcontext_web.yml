@@ -25,7 +25,7 @@
 #      parecería no-idempotente (restorecon en sí ya es idempotente).
 #    - mode SIEMPRE entre comillas: sin ellas YAML 1.1 lee 0755 como octal.
 #
-#  VALIDACIÓN: core/checkers/selinux_fcontext.sh — regla persistente
+#  VALIDACIÓN: core/checkers/check_selinux_fcontext.sh — regla persistente
 #  presente y contexto httpd_sys_content_t aplicado al fichero.
 # ============================================================================
 - name: SELinux fcontext para /web
