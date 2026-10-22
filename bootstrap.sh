@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  RHCE_Lab — bootstrap.sh (v1.3.3)
+#  RHCE_Lab — bootstrap.sh (v1.3.4)
 #  El "disaster recovery" de un solo comando: MV recién restaurada
 #  de CUALQUIER snapshot -> TODO listo en 5 pasos.
 #
