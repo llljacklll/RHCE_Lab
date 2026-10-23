@@ -17,7 +17,7 @@
 #              (inventario cargado, SSH sin contraseña)
 #    Fase 3 -> Motor de Automatización (Ansible Core 2.16)
 #    Fase 4 -> Ejecución real de site.yml contra los nodos
-#    Fase 5 -> Motor de exámenes (carga -> resuelve -> corrige)
+#    Fase 5 -> Motor de exámenes: los 3 fijos (carga -> resuelve -> corrige)
 #
 #  CONTRATO DE SALIDA (importante para CI):
 #    Sale con código 0 si TODO pasa, 1 si algo falla (útil
@@ -177,33 +177,60 @@ function lab_test() {
     # ========================================================
     # FASE 5 :: Motor de exámenes (carga -> resuelve -> corrige)
     # ========================================================
-    # Prueba el circuito COMPLETO del examen en modo forzado:
-    #   1. instala el examen 001 como activo (copiarlo a
-    #      CURRENT_EXAM_FILE es justo lo que hace lab_exam
-    #      con un escenario estático),
-    #   2. ejecuta su SOLUCIÓN (el playbook resuelto existe en
-    #      el control para esto),
-    #   3. llama a ./lab.sh grade como haría el alumno: la
-    #      corrección debe encontrar todos los checks en OK y
-    #      cantar el APROBADO.
-    # Si esta fase pasa, el motor completo (parser -> plugins
-    # -> veredicto) está sano de extremo a extremo.
-    # NOTA: grade termina con reset_exam_state, así que deja
-    # el state/ limpio y la batería es repetible.
+    # Prueba el circuito COMPLETO contra LOS TRES exámenes
+    # fijos, en orden de dificultad (001 easy -> 002 medium ->
+    # 003 hard). Por cada examen:
+    #   1. lo instala como activo (copiarlo a CURRENT_EXAM_FILE
+    #      es justo lo que hace lab_exam con un estático),
+    #   2. ejecuta su SOLUCIÓN de referencia (el playbook
+    #      resuelto vive en el control; el flag de vault es
+    #      inocuo para los exámenes que no lo usan),
+    #   3. llama a ./lab.sh grade como haría el alumno y exige
+    #      el TOTAL EXACTO ("Resultado Final: 3/3"...): más
+    #      fuerte que el banner genérico de aprobado.
+    # Si los tres pasan, el motor (parser -> plugins ->
+    # veredicto) Y las tres soluciones de referencia están
+    # sanos de extremo a extremo. Esta fase es la que habría
+    # cazado el playbook huérfano de exam_003 (pedía vg_exam
+    # cuando el escenario exigía vg_<nodo>).
+    #
+    # LIMPIEZA ENTRE EXÁMENES: ninguna, a propósito. Las
+    # soluciones son idempotentes y cada una reescribe lo que
+    # sus checks leen. Matiz honesto: sobre nodos ya usados,
+    # la huella de corridas anteriores puede inflar checks de
+    # existencia (httpd lo deja la propia Fase 4; webadmin o
+    # los LV pueden venir de baterías previas) — el total
+    # exacto caza soluciones podridas contra nodos vírgenes
+    # (tras un 'up' fresco), que es donde el runbook manda
+    # leer los resultados. El PLAY RECAP de cada playbook se
+    # muestra justo arriba de su aserción: si un grade pasara
+    # con un playbook caído, la huella queda a la vista.
+    # NOTA: grade termina con reset_exam_state (state/ limpio
+    # y batería repetible) y el test NO arranca el cronómetro
+    # (corrige en modo libre, sin sellos anti-trampas).
     # ========================================================
     echo -e "\n${YELLOW}[+] Fase 5: Motor de Exámenes${NC}"
 
-    ensure_state_dir
-    cp "$SCENARIOS_DIR/easy/exam_001.yml" "$CURRENT_EXAM_FILE"
-    echo -e "  ${CYAN}[...] Forzando solución del examen 001...${NC}"
-    docker exec -w /opt/ansible control ansible-playbook \
-        -i /opt/ansible/inventory/hosts.ini \
-        -e "ansible_become_password=ansible" \
-        --ssh-common-args="-o StrictHostKeyChecking=no" \
-        playbooks/exam_001.yml >/dev/null 2>&1
+    local spec ex_id rest ex_diff ex_total pb_out grade_out
+    for spec in "exam_001:easy:3/3" "exam_002:medium:2/2" "exam_003:hard:5/5"; do
+        ex_id="${spec%%:*}";  rest="${spec#*:}"
+        ex_diff="${rest%%:*}"; ex_total="${rest##*:}"
 
-    local grade_out; grade_out=$( "$PROJECT_DIR/lab.sh" grade 2>&1 )
-    _assert_contains "Examen 001 Aprobado" "¡ENHORABUENA, EXAMEN APROBADO!" "$grade_out"
+        ensure_state_dir
+        cp "$SCENARIOS_DIR/${ex_diff}/${ex_id}.yml" "$CURRENT_EXAM_FILE"
+        echo -e "  ${CYAN}[...] Forzando solución del ${ex_id} (${ex_diff})...${NC}"
+        pb_out=$(docker exec -w /opt/ansible control ansible-playbook \
+            -i /opt/ansible/inventory/hosts.ini \
+            -e "ansible_become_password=ansible" \
+            --ssh-common-args="-o StrictHostKeyChecking=no" \
+            --vault-password-file /opt/ansible/files/.vault_pass \
+            "playbooks/${ex_id}.yml" 2>&1)
+        echo "$pb_out" | grep -A 5 'PLAY RECAP' || true
+
+        grade_out=$( "$PROJECT_DIR/lab.sh" grade 2>&1 )
+        _assert_contains "Examen ${ex_id} corregido a ${ex_total}" \
+                         "Resultado Final: ${ex_total}" "$grade_out"
+    done
 
     # ========================================================
     # RESUMEN FINAL
