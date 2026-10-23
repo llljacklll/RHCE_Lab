@@ -12,7 +12,7 @@
 #       delega cada check en su plugin de
 #       core/checkers/check_<tipo>.sh, contra TODOS los nodos.
 #    4. RESULTADO: imprime el resumen y guarda un log SIN
-#       colores en state/results/<timestamp>.log.
+#       colores en state/results/exam_<id>_<timestamp>.log.
 #    5. LIMPIEZA: resetea el estado del examen (la próxima
 #       corrección empieza de cero; el log sí permanece).
 #
@@ -348,7 +348,7 @@ function _print_grade_result() {
 
 # ------------------------------------------------------------
 # _save_results <examen> <output> <passed> <total>
-#   Persiste el resultado en state/results/<timestamp>.log.
+#   Persiste el resultado en state/results/exam_<id>_<timestamp>.log.
 #
 #   POR QUÉ SIN COLORES: el log se lee en un editor/less y las
 #   secuencias ANSI (ESC[32m...) se ven como jeroglíficos.
