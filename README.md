@@ -20,7 +20,7 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 | Exámenes aleatorios | `./lab.sh exam --random N` genera exámenes únicos desde `scenarios/task_pool.yml` |
 | Anti-trampas | Cronómetro persistente en `state/exam_status.yml`: si expira, `grade` se bloquea |
 | Logs persistentes | Cada corrección deja un informe en `state/results/` |
-| Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 512MB (1GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
+| Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 1GB (2GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
 | Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
 
 ## Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
