@@ -62,10 +62,10 @@
 # tocar jamás los datos de node2.
 DISK_IMG_DIR="/var/lib/rhce-lab/disks"
 
-# 512M: de sobra para pv/vg/lv + filesystem de las tareas,
+# 1G: de sobra para pv/vg/lv + filesystem de las tareas,
 # y lo bastante pequeño para que truncate sea instantáneo
 # (fichero sparse: no ocupa disco hasta que se escribe).
-DISK_SIZE="512M"
+DISK_SIZE="1G"
 
 # Centinela de "este arranque debe dejar los discos
 # prístinos". Lo crea docker.sh en up/reset y lo consume el
@@ -316,7 +316,7 @@ lab_disks_finalize() {
                 # de que el HOST lo tiene adjuntado.
                 if ! _loop_on_host "$dev"; then
                     mkdir -p "$DISK_IMG_DIR"
-                    # imagen sparse de 512M si no existe
+                    # imagen sparse de 1G si no existe
                     [ -f "$img" ] \
                       || truncate -s "$DISK_SIZE" "$img"
                     # carga el módulo loop (MV minimizada)
