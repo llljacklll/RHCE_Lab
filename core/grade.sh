@@ -366,7 +366,7 @@ function _save_results() {
     # Timestamp al segundo: dos grades en el mismo minuto no
     # se pisan entre sí.
     local timestamp; timestamp=$(date '+%Y%m%d_%H%M%S')
-    local log_file="$RESULTS_DIR/exam_${timestamp}.log"
+    local log_file="$RESULTS_DIR/$(basename "$exam_file" .yml)_${timestamp}.log"
     # Solo el nombre base: en el log se lee mejor y da igual
     # si el examen venía de state/ o de scenarios/.
     local exam_id;  exam_id=$(basename "$exam_file")
