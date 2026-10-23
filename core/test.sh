@@ -80,7 +80,7 @@ function lab_test() {
     require_control_running
 
     echo -e "${CYAN}========================================${NC}"
-    echo -e "${CYAN}       RHCE LAB - TEST SUITE v1.1       ${NC}"
+    echo -e "${CYAN}       RHCE LAB - TEST SUITE $(git -C "$(dirname "$(readlink -f "$0")")" describe --tags --always 2>/dev/null || echo "v1.4.2")       ${NC}"
     echo -e "${CYAN}========================================${NC}"
 
     # ========================================================
