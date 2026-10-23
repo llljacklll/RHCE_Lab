@@ -118,7 +118,7 @@ function print_help() {
     echo "  exam --start          Iniciar cronómetro y mostrar examen generado"
     echo ""
     echo "Evaluación:"
-    echo "  grade    Corregir el examen activo (ej: $0 grade)"
+    echo "  grade    Corregir el examen activo o uno concreto (ej: $0 grade easy/exam_001.yml)"
     echo "  test     Ejecutar la batería de pruebas automática completa"
     echo ""
     echo "Opciones:"
