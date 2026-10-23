@@ -202,7 +202,7 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 - **Firewalld en modo offline**: los playbooks usan `offline: true` en
   `ansible.posix.firewalld`, que edita los XML directamente sin demonio.
   Es determinista y portable (no depende del daemon ni de nf_tables).
-- **LVM sobre loop devices**: los discos son loopback de 512MB. Los loop
+- **LVM sobre loop devices**: los discos son loopback de 1GB. Los loop
   devices son **recursos globales del kernel**, así que cada nodo usa
   una **pareja fija** (node1: `loop0/1`, node2: `loop2/3`, node3:
   `loop4/5`; control ninguno) y `setup-disks.sh` nunca hace
