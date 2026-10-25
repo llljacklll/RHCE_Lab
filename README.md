@@ -8,6 +8,7 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 - Motor de exámenes con **cronómetro y anti-trampas**
 - Corrección automática por **plugins** (paquetes, usuarios, servicios, ficheros, LVM, cron...)
 - Generador de **exámenes aleatorios** desde un banco de tareas
+- **Consola web** (`./lab.sh web`): genera el examen, cronómetro, enunciados, terminal del nodo de control y corrección, todo desde el navegador
 
 ---
 
@@ -22,6 +23,7 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 | Logs persistentes | Cada corrección deja un informe en `state/results/` |
 | Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 1GB (2GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
 | Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
+| Consola web | `./lab.sh web` sirve el panel en `127.0.0.1:8888` (acceso remoto por túnel SSH, cero firewalld): generar, cronometrar, resolver con vim y terminal real, y corregir — [docs/WEBUI.md](docs/WEBUI.md) |
 
 ## Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
 
@@ -122,6 +124,7 @@ git pull --ff-only
 ```bash
 ./lab.sh up     # levantar (.vault_pass se crea solo si falta)
 ./lab.sh test   # batería de pruebas automática
+./lab.sh web    # consola web en http://127.0.0.1:8888 (opcional)
 ```
 
 ## Uso de la CLI
@@ -135,6 +138,7 @@ git pull --ff-only
 | `./lab.sh doctor` | Chequeo rápido: docker, contenedores, discos por nodo y filtro LVM |
 | `./lab.sh autostart` | Instalar el autoarranque del lab con la MV (unidad `rhce-lab.service`) |
 | `./lab.sh shell` | Entrar por SSH al nodo control |
+| `./lab.sh web` | Lanzar la consola web (`127.0.0.1:8888`; remoto por túnel SSH: [docs/WEBUI.md](docs/WEBUI.md)) |
 | `./lab.sh run <playbook.yml>` | Ejecutar un playbook contra los 3 nodos |
 | `./lab.sh run --vault <playbook.yml>` | Ídem, pidiendo contraseña de Vault |
 | `./lab.sh exam` | Ayuda del modo examen |
@@ -156,6 +160,30 @@ git pull --ff-only
 
 3. **Corregir**: `./lab.sh grade` → resultado por tareas + informe en
    `state/results/`. Si el cronómetro expiró, la corrección se bloquea.
+
+## El examen desde la web (LOTE 26-29)
+
+Todo el flujo anterior se puede hacer desde el navegador:
+
+    ./lab.sh web        # sirve http://127.0.0.1:8888 (solo loopback)
+
+- **Generar** el examen (dificultad `mixed|easy|medium|hard` y N tareas) y
+  **cronómetro** en pantalla, con aviso a los 15 y 5 minutos.
+- **Enunciado siempre visible**: tarjeta de tareas con `[editar]` (abre
+  `vim` apuntando a `ansible/playbooks/<tarea>.yml` EN el terminal web
+  del nodo control) y `[mostrar solucion]` (modo aprendizaje, abajo del
+  todo). Los botones permanecen ocultos hasta que arranca el cronómetro.
+- **Terminal real** del nodo de control (xterm.js) dockado al lado de la
+  salida del simulador: aquí se HACE el examen.
+- **Grade / Doctor** con la salida ANSI a color; el chip de cabecera
+  recuerda la última nota.
+- Acceso remoto por **túnel SSH** reutilizando el único puerto abierto de
+  la MV: cero firewalld.
+
+Detalles de seguridad, atajos de túnel, operativa e interior del
+mecanismo: [docs/WEBUI.md](docs/WEBUI.md). Arquitectura general del
+proyecto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Motor de
+exámenes: [docs/EXAMS.md](docs/EXAMS.md).
 
 ## El Vault del laboratorio
 
@@ -220,6 +248,29 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
   nodo** (en el lab prístino dan FAIL, como debe ser).
 - **DNS**: la red es fija (172.20.0.0/24) para evitar caídas por caché
   de DNS de Docker. En redes corporativas: `./lab.sh up --dns <ips>`.
+- **Consola web**: un único fichero Python stdlib (`webui/webui.py`)
+  que actúa como mando a distancia del CLI: allowlist de acciones y
+  `subprocess` sin shell; el servidor **nunca escribe estado**, solo
+  lee `state/`. El terminal del nodo control viaja por un WebSocket
+  artesanal sobre PTY con gate de Origin (anti drive-by), y xterm.js
+  se sirve local desde `webui/static/` (sin internet). El detalle
+  completo en [docs/WEBUI.md](docs/WEBUI.md).
+
+## Novedades: la consola web (LOTE 26-29, post v1.4.2)
+
+- **webui.py**: fichero único Python stdlib (sin dependencias) con el
+  panel, la API y el frontend embebido: `./lab.sh web` lo sirve en
+  `127.0.0.1:8888`.
+- **Acceso remoto por túnel SSH** (`ssh -J`): la web escucha solo en
+  loopback y reutiliza el único puerto abierto de la MV — cero firewalld.
+- **Terminal del nodo de control** en la propia web (xterm.js servido
+  local + WebSocket RFC6455 escrito a mano sobre PTY).
+- **Examen 100% hacible desde la web**: enunciado siempre visible,
+  `[editar]` abre `vim` en el fichero de la tarea, `[mostrar solucion]`
+  en modo aprendizaje, salida del simulador dockada al terminal.
+- **UX de examen real** (LOTE 29): solución en su propia tarjeta abajo
+  del todo, toggles por tarea, botones ocultos hasta iniciar el
+  cronómetro y autoconexión del terminal.
 
 ## Novedades de v1.2.0 (autoarranque total)
 
@@ -244,6 +295,7 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 
 - [x] Tareas de Block/Rescue en el task pool
 - [x] Checker fino de SELinux (fcontext real)
+- [x] Consola web del simulacro (generación, cronómetro, terminal y corrección)
 - [ ] Más exámenes estáticos
 
 ## Licencia
