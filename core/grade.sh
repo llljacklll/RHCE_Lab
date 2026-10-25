@@ -175,7 +175,17 @@ function _print_expired_error() {
 # ------------------------------------------------------------
 function _resolve_exam_file() {
     if [ -n "$PLAYBOOK_FILE" ]; then
-        local file="$SCENARIOS_DIR/${PLAYBOOK_FILE}"
+        local file=""
+        if [ -f "$PROJECT_DIR/${PLAYBOOK_FILE}" ]; then
+            # Ruta relativa al lab tal cual (p.ej. scenarios/hard/exam_003.yml)
+            file="$PROJECT_DIR/${PLAYBOOK_FILE}"
+        elif [[ "$PLAYBOOK_FILE" = /* ]] && [ -f "$PLAYBOOK_FILE" ]; then
+            # Ruta absoluta
+            file="$PLAYBOOK_FILE"
+        else
+            # Historico: nombre pelado o ruta scenarios-relativa (hard/exam_003.yml)
+            file="$SCENARIOS_DIR/${PLAYBOOK_FILE}"
+        fi
         require_file_exists "$file" "No se encontró $file"
         echo "$file"
     elif [ -f "$CURRENT_EXAM_FILE" ]; then

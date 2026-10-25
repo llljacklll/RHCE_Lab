@@ -54,6 +54,11 @@ function generate_random_exam() {
     # sin enumerarlas una a una.
     if ! [[ "$num_tasks" =~ ^[0-9]+$ ]]; then echo -e "${RED}[-] Numero de tareas invalido${NC}"; exit 1; fi
 
+    # El 0 satisface el regex pero un examen sin tareas no es
+    # un examen: un sorteo de 0 dejaria un YAML con tasks: []
+    # y un grade 0/0 que solo trae confusion.
+    if [ "$num_tasks" -lt 1 ]; then echo -e "${RED}[-] El numero de tareas debe ser al menos 1${NC}"; exit 1; fi
+
     # Validar la dificultad contra la lista cerrada. La
     # primera rama está vacía a propósito: es el "válido,
     # sigue" de este case de validación.
@@ -107,6 +112,8 @@ dif = "$difficulty"
 if dif in ("easy", "medium", "hard"):
     tasks = [t for t in tasks if str(t.get("difficulty", "easy")).lower() == dif]
 if not tasks: print("ERROR: No hay tareas de dificultad " + dif, file=sys.stderr); sys.exit(1)
+if $num_tasks > len(tasks):
+    print("[!] Aviso: el banco solo tiene " + str(len(tasks)) + " tareas de esa dificultad; se sortean " + str(len(tasks)) + ".", file=sys.stderr)
 selected = random.sample(tasks, min($num_tasks, len(tasks)))
 exam = {"id": "random_exam", "difficulty": dif, "title": "Examen Aleatorio RHCE", "time_limit": 15 * len(selected), "tasks": [], "checks": []}
 for t in selected:
@@ -124,5 +131,5 @@ PYEOF2
     # grep -c 'task_id:' cuenta las LÍNEAS con task_id:
     # exactamente una por check → el total de puntos de
     # corrección sobre los que correrá grade.
-    echo -e "${GREEN}[+] Examen generado correctamente ($(grep -c 'task_id:' "$CURRENT_EXAM_FILE") checks).${NC}"
+    echo -e "${GREEN}[+] Examen generado correctamente ($(grep -c '^- id:' "$CURRENT_EXAM_FILE") tareas / $(grep -c 'task_id:' "$CURRENT_EXAM_FILE") checks).${NC}"
 }
