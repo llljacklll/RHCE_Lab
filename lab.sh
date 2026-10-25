@@ -21,6 +21,7 @@
 #    core/exam.sh ......... 'exam': generar/presentar/iniciar examen
 #    core/grade.sh ........ 'grade': corrección + anti-trampas (cronómetro)
 #    core/test.sh ......... 'test': batería de humo automática
+#    webui/webui.py ....... 'web': consola web del simulacro (LOTE 26)
 #
 #  USO: ./lab.sh <acción> [opciones]  (sin argumentos = menú de ayuda)
 # ============================================================================
@@ -115,6 +116,7 @@ function print_help() {
     echo "  exam                  Mostrar menú de ayuda de exámenes"
     echo "  exam <archivo.yml>    Lanzar examen estático (ej: $0 exam easy/exam_001.yml)"
     echo "  exam --random [N] [dif]  Generar examen aleatorio (Defecto: 3 tareas, mixed)"
+    echo "  web [--port P]         Consola web en 127.0.0.1:8888 (acceso por tunel SSH)"
     echo "  exam --start          Iniciar cronómetro y mostrar examen generado"
     echo ""
     echo "Evaluación:"
@@ -160,7 +162,7 @@ while [[ "$#" -gt 0 ]]; do
             shift
             ;;
         -h|--help) print_help ;;
-        up|down|start|stop|reset|shell|test|doctor|autostart)
+        up|down|start|stop|reset|shell|test|doctor|autostart|web)
             ACTION="$1"
             shift
             ;;
@@ -201,6 +203,18 @@ done
 #     test -> core/test.sh. 'down' además resetea el estado del examen:
 #     un examen a medias NO debe sobrevivir a la destrucción del lab.
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# WEB - consola web del simulacro (LOTE 26). La web ES el CLI: lab_web
+# solo hace exec de python3 con webui/webui.py; sin logica de negocio aqui.
+# ----------------------------------------------------------------------------
+function lab_web() {
+    local dir webui_py
+    dir=$(dirname "$(readlink -f "$0")")
+    webui_py="$dir/webui/webui.py"
+    command -v python3 >/dev/null 2>&1 || { echo -e "${RED}[-] python3 no disponible${NC}"; exit 1; }
+    [ -f "$webui_py" ] || { echo -e "${RED}[-] No existe $webui_py${NC}"; exit 1; }
+    exec python3 "$webui_py" "$@"
+}
 case "$ACTION" in
     up)    print_banner; lab_up ;;
     down)  lab_down; reset_exam_state ;;
@@ -210,6 +224,7 @@ case "$ACTION" in
     shell) lab_shell ;;
     doctor)   lab_doctor ;;
     autostart) lab_autostart ;;
+    web)    lab_web "$@" ;;
     run)   lab_run ;;
     exam)  lab_exam $EXAM_ARGS ;;
     grade) lab_grade ;;
