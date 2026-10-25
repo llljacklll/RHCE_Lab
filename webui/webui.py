@@ -12,14 +12,30 @@ Regla de oro: la web es un mando a distancia del CLI.
  - Escucha SOLO en 127.0.0.1: el acceso remoto va por tunel SSH
    (ssh -J root@<IP-laboratorio> -L 8888:127.0.0.1:8888 root@<IP-laboratoriob>),
    reutilizando el unico puerto que ya esta abierto. Cero firewalld.
+ - LOTE 27 - terminal del nodo de control: /ws monta un bash de login
+   con PTY sobre WebSocket (RFC6455 minimo escrito a mano, cero
+   dependencias) y lo pinta xterm.js servido LOCAL (webui/static/).
+   Mismo puerto => el tunel SSH NO cambia. Gate anti drive-by: /ws
+   solo acepta Origin localhost/127.0.0.1 (un WS no tiene SOP y sin
+   este gate cualquier web abierta en el navegador abriria un shell).
 
 Solo stdlib (el python3 de la propia MV). Lanzar: ./lab.sh web
 """
 import argparse
+import base64
+import codecs
+import fcntl
+import hashlib
 import html
 import json
+import os
+import pty
 import re
+import signal
+import socket
+import struct
 import subprocess
+import termios
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -190,6 +206,7 @@ INDEX_HTML = """<!doctype html>
 <meta name="color-scheme" content="dark">
 <title>RHCE_Lab - Consola del simulacro</title>
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/xterm.min.css">
 <style>
 :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--dim:#8b949e;
 --grn:#3fb950;--red:#f85149;--cyn:#39c5ff;--yel:#d29922;--acc:#58a6ff}
@@ -226,6 +243,18 @@ word-break:break-word;font-size:13px}
 .c-wht{color:#f0f6fc}.b{font-weight:700}.u{text-decoration:underline}
 .badge{font-size:11px;color:var(--dim);margin-left:10px}
 .foot{color:var(--dim);font-size:11px;text-align:center;padding:10px}
+#terminal-card{display:none}
+#xtermbox{height:52vh;min-height:320px;background:#010409;
+border:1px solid var(--border);border-radius:10px;padding:6px}
+.termbar{display:flex;justify-content:space-between;align-items:center;
+margin:0 0 10px}
+.wson{color:var(--grn)} .wsoff{color:var(--dim)}
+body.termon #terminal-card{display:block}
+body.termon .row{grid-template-columns:1fr}
+body.termon .row .card:first-child{display:none}
+body.termon #outcard{display:none}
+body.termon main{max-width:1400px}
+body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
 @media(max-width:720px){.row{grid-template-columns:1fr}#timer{text-align:left}}
 </style></head><body>
 <header>
@@ -233,6 +262,7 @@ word-break:break-word;font-size:13px}
   <div class="chips">
     <span class="chip">examen: <b id="chip-exam">-</b></span>
     <span class="chip">ultimo: <b id="chip-last">-</b></span>
+    <button id="btnTerm" onclick="tToggle()">Terminal</button>
   </div>
 </header>
 <main>
@@ -259,13 +289,24 @@ word-break:break-word;font-size:13px}
     <button style="float:right" onclick="term.textContent=''">Limpiar</button>
     <span class="badge" id="runbadge"></span>
   </div>
-  <div class="card">
+  <div class="card" id="outcard">
     <h2>Salida del simulador</h2>
     <div id="term"></div>
+  </div>
+  <div class="card" id="terminal-card">
+    <h2>Terminal del nodo de control
+      <span class="badge">aqui se HACE el examen</span></h2>
+    <div class="termbar">
+      <span class="wsoff" id="wsState">terminal: desconectado</span>
+      <button onclick="wsConnect()">Conectar</button>
+    </div>
+    <div id="xtermbox"></div>
   </div>
 </main>
 <div class="foot">solo loopback - acceso por tunel SSH (ssh -J) -
 toda accion pasa por lab.sh</div>
+<script src="/static/xterm.min.js"></script>
+<script src="/static/xterm-addon-fit.min.js"></script>
 <script>
 const $=i=>document.getElementById(i);
 const term=$('term');
@@ -330,6 +371,38 @@ function paintTimer(){
   el.className=rem<300?'crit':(rem<900?'warn':'');
 }
 
+// ---- LOTE 27: terminal del nodo de control (xterm.js + /ws) ----
+let xt=null,fit=null,ws=null;
+function wsSend(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o));}
+function wsTxt(t,on){const e=$('wsState');e.textContent='terminal: '+t;
+  e.className=on?'wson':'wsoff';}
+function wsConnect(){
+  if(!window.Terminal||!window.FitAddon){
+    wsTxt('faltan /static/xterm*.js (lote 27 S1)',false);return;}
+  if(ws&&(ws.readyState===0||ws.readyState===1))return;
+  if(!xt){
+    xt=new Terminal({cursorBlink:true,fontSize:14,scrollback:5000,
+      fontFamily:'ui-monospace,Menlo,Consolas,monospace',
+      theme:{background:'#010409',foreground:'#e6edf3',cursor:'#58a6ff'}});
+    fit=new FitAddon.FitAddon();xt.loadAddon(fit);xt.open($('xtermbox'));
+    xt.onData(d=>wsSend({type:'input',data:d}));
+    window.addEventListener('resize',()=>{if(document.body.classList.contains('termon')){
+      fit.fit();wsSend({type:'resize',cols:xt.cols,rows:xt.rows});}});
+  }
+  wsTxt('conectando...',false);
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
+  ws.onopen=()=>{wsTxt('conectado',true);
+    fit.fit();wsSend({type:'resize',cols:xt.cols,rows:xt.rows});};
+  ws.onmessage=e=>{if(typeof e.data==='string')xt.write(e.data);};
+  ws.onclose=()=>{wsTxt('desconectado (Conectar para reentrar)',false);};
+  ws.onerror=()=>{wsTxt('error de socket',false);};
+}
+function tToggle(){
+  const on=document.body.classList.toggle('termon');
+  $('btnTerm').textContent=on?'Panel':'Terminal';
+  if(on){wsConnect();if(fit)setTimeout(()=>fit.fit(),50);}
+}
+
 refreshStatus();
 setInterval(refreshStatus,10000);
 setInterval(()=>{if(lastRem!=null&&lastRem>0){lastRem--;paintTimer();}},1000);
@@ -338,10 +411,228 @@ setInterval(()=>{if(lastRem!=null&&lastRem>0){lastRem--;paintTimer();}},1000);
 
 
 # ======================================================================
+# LOTE 27 - Terminal del nodo de control: /ws monta un bash de login
+# con PTY y lo sirve a xterm.js. RFC6455 minimo escrito a mano (cero
+# dependencias). Gate anti drive-by: un WS no tiene SOP y cualquier
+# web del navegador podria apuntar a localhost, asi que /ws solo
+# acepta Origin localhost/127.0.0.1 (o sin Origin: clientes CLI).
+# ======================================================================
+WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+WS_MAX = 10 * 1024 * 1024
+STATIC_FILES = {
+    "xterm.min.css": "text/css; charset=utf-8",
+    "xterm.min.js": "application/javascript; charset=utf-8",
+    "xterm-addon-fit.min.js": "application/javascript; charset=utf-8",
+}
+
+
+def ws_frame(op, payload=b""):
+    """Frame de servidor (sin mascara; el cliente SI enmascara)."""
+    n = len(payload)
+    if n < 126:
+        head = struct.pack(">BB", 0x80 | op, n)
+    elif n < 65536:
+        head = struct.pack(">BBH", 0x80 | op, 126, n)
+    else:
+        head = struct.pack(">BBQ", 0x80 | op, 127, n)
+    return head + payload
+
+
+def ws_read(rf, n):
+    """Lee n bytes exactos del stream del cliente."""
+    buf = b""
+    while len(buf) < n:
+        chunk = rf.read(n - len(buf))
+        if not chunk:
+            raise ConnectionError("ws: cliente desconectado")
+        buf += chunk
+    return buf
+
+
+def ws_recv(rf):
+    """Lee un frame de cliente (RFC: siempre enmascarado). (op, datos)"""
+    h = ws_read(rf, 2)
+    op, masked, ln = h[0] & 0x0F, h[1] & 0x80, h[1] & 0x7F
+    if ln == 126:
+        ln = struct.unpack(">H", ws_read(rf, 2))[0]
+    elif ln == 127:
+        ln = struct.unpack(">Q", ws_read(rf, 8))[0]
+    if ln > WS_MAX:
+        raise ValueError("ws: frame gigante (%d)" % ln)
+    if not masked:
+        raise ConnectionError("ws: frame sin mascara")
+    key = ws_read(rf, 4)
+    data = bytearray(ws_read(rf, ln))
+    for i in range(ln):
+        data[i] ^= key[i & 3]
+    return op, bytes(data)
+
+
+class TerminalSession:
+    """Un bash de login (cwd del lab) con PTY por cada cliente WS.
+
+    Dos hilos: pty->ws (salida) y ws->pty (teclado/resize). Al morir
+    cualquiera de los dos lados se mata el grupo completo de la sesion
+    (bash + hijos tipo vim o ssh a los nodos gestionados)."""
+
+    def __init__(self, sock, rfile):
+        self.sock, self.rf = sock, rfile
+        self.dead = False
+        self.tlock = threading.Lock()
+        self.slock = threading.Lock()
+        self.dec = codecs.getincrementaldecoder("utf-8")("replace")
+        self.pid, self.master = pty.fork()
+        if self.pid == 0:                        # hijo: bash del lab
+            os.environ["TERM"] = "xterm-256color"
+            try:
+                os.chdir(PROJECT_DIR)
+            except OSError:
+                pass
+            try:
+                os.execvp("/bin/bash", ["/bin/bash", "-l"])
+            except Exception:
+                os._exit(127)
+        print("[ws] sesion abierta: pid %d (bash de login en %s)"
+              % (self.pid, PROJECT_DIR), flush=True)
+        threading.Thread(target=self._pty_to_ws, daemon=True).start()
+        threading.Thread(target=self._ws_to_pty, daemon=True).start()
+
+    def _send(self, op, payload=b""):
+        if self.dead:
+            return
+        try:
+            with self.slock:
+                self.sock.sendall(ws_frame(op, payload))
+        except OSError:
+            self._teardown()
+
+    def _pty_to_ws(self):
+        try:
+            while True:
+                chunk = os.read(self.master, 65536)
+                if not chunk:
+                    break
+                self._send(1, self.dec.decode(chunk).encode("utf-8", "replace"))
+        except OSError:
+            pass
+        finally:
+            try:
+                os.close(self.master)
+            except OSError:
+                pass
+        self._teardown()
+
+    def _ws_to_pty(self):
+        try:
+            while True:
+                op, data = ws_recv(self.rf)
+                if op == 8:                      # close del cliente
+                    break
+                if op == 9:                      # ping -> pong
+                    self._send(10, data)
+                    continue
+                if op in (1, 2):
+                    msg = json.loads(data.decode("utf-8", "replace"))
+                    if msg.get("type") == "input":
+                        buf = str(msg.get("data", "")).encode("utf-8", "replace")
+                        while buf:
+                            buf = buf[os.write(self.master, buf):]
+                    elif msg.get("type") == "resize":
+                        fcntl.ioctl(self.master, termios.TIOCSWINSZ,
+                                    struct.pack("HHHH",
+                                                int(msg.get("rows") or 24),
+                                                int(msg.get("cols") or 80),
+                                                0, 0))
+        except Exception:
+            pass
+        self._teardown()
+
+    def _teardown(self):
+        with self.tlock:
+            if self.dead:
+                return
+            self.dead = True
+            try:
+                with self.slock:
+                    self.sock.sendall(ws_frame(8, b""))   # close WS limpio
+            except OSError:
+                pass
+            try:
+                os.killpg(self.pid, signal.SIGKILL)       # bash + hijos
+            except (ProcessLookupError, PermissionError):
+                pass
+            try:
+                os.waitpid(self.pid, 0)                   # sin zombies
+            except (ChildProcessError, OSError):
+                pass
+            try:
+                os.close(self.master)
+            except OSError:
+                pass
+            try:
+                self.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                self.sock.close()
+            except OSError:
+                pass
+            print("[ws] sesion cerrada: pid %d" % self.pid, flush=True)
+
+
+# ======================================================================
 # HTTP
 # ======================================================================
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RHCE-webui/26"
+    server_version = "RHCE-webui/27"
+    ws_takeover = False            # /ws: el socket ya no es del handler
+
+    def finish(self):
+        if self.ws_takeover:       # no cerrar rfile/wfile: son del terminal
+            return
+        super().finish()
+
+    def _static(self, name):
+        ctype = STATIC_FILES.get(name)
+        if not ctype:
+            self._json(404, {"error": "estatico no permitido"})
+            return
+        try:
+            body = (HERE / "static" / name).read_bytes()
+        except OSError:
+            self._json(404, {"error": "falta webui/static/%s (lote 27 S1)"
+                              % name})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _websocket(self):
+        org = self.headers.get("Origin", "")
+        host = org.split("//", 1)[-1].split(":")[0]
+        if org and host not in ("localhost", "127.0.0.1"):
+            self._json(403, {"error": "Origin no permitido"})
+            return
+        key = (self.headers.get("Sec-WebSocket-Key") or "").strip()
+        up = self.headers.get("Upgrade", "").lower() == "websocket" \
+            and "upgrade" in self.headers.get("Connection", "").lower()
+        if not key or not up:
+            self._json(400, {"error": "handshake WS invalido"})
+            return
+        acc = base64.b64encode(
+            hashlib.sha1((key + WS_GUID).encode()).digest()).decode()
+        self.connection.sendall(
+            b"HTTP/1.1 101 Switching Protocols\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + acc.encode() + b"\r\n\r\n")
+        self.close_connection = True
+        TerminalSession(self.connection, self.rfile)   # desde aqui, suyo
+        self.ws_takeover = True
+        self.server._ws_sockets.add(self.connection)  # el server no lo cerrara
 
     def _json(self, code, obj):
         body = json.dumps(obj).encode()
@@ -353,6 +644,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
+        if u.path.startswith("/static/"):
+            self._static(u.path[8:])
+            return
+        if u.path == "/ws":
+            self._websocket()
+            return
         if u.path == "/":
             body = INDEX_HTML.encode()
             self.send_response(200)
@@ -416,6 +713,20 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class LabServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer que no cierra los sockets tomados por /ws."""
+
+    def __init__(self, addr, handler):
+        super().__init__(addr, handler)
+        self._ws_sockets = set()
+
+    def shutdown_request(self, request):
+        if request in self._ws_sockets:
+            self._ws_sockets.discard(request)
+            return
+        super().shutdown_request(request)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Consola web del simulacro RHCE")
     ap.add_argument("--port", type=int, default=8888)
@@ -431,8 +742,9 @@ def main():
     print("   ssh -J root@<IP-laboratorio> -L %d:127.0.0.1:%d root@<IP-laboratoriob>"
           % (a.port, a.port))
     print("   y abre http://localhost:%d en el navegador" % a.port)
+    print(" Terminal:       boton [Terminal] - bash del lab via /ws (lote 27)")
     print("=" * 56)
-    ThreadingHTTPServer((a.bind, a.port), Handler).serve_forever()
+    LabServer((a.bind, a.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":
