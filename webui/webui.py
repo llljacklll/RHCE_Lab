@@ -18,6 +18,11 @@ Regla de oro: la web es un mando a distancia del CLI.
    Mismo puerto => el tunel SSH NO cambia. Gate anti drive-by: /ws
    solo acepta Origin localhost/127.0.0.1 (un WS no tiene SOP y sin
    este gate cualquier web abierta en el navegador abriria un shell).
+ - LOTE 28 - enunciado SIEMPRE a la vista: tarjeta Tareas del examen
+   con [editar] (inyecta 'vim ansible/playbooks/<task>.yml' en la
+   sesion WS) y [solucion] (soluciones/<task>.yml read-only). El
+   terminal se DOCKA a la derecha sin ocultar la Salida del simulador.
+   /api/exam y /api/solucion son LECTURA pura; task saneado [A-Za-z0-9_].
 
 Solo stdlib (el python3 de la propia MV). Lanzar: ./lab.sh web
 """
@@ -167,6 +172,47 @@ def last_results(n=5):
 
 
 # ======================================================================
+# LOTE 28 - tareas del examen y soluciones de referencia (solo LECTURA).
+#   exam_tasks:    '- id: <task>' + '  description: ...' por tarea,
+#                  tal como las serializa yaml.dump en current_exam.yml.
+#   read_solution: task saneado [A-Za-z0-9_]+ ANTES de tocar el disco;
+#                  sin ese gate un ?task=../../etc/passwd leeria ficheros
+#                  que no son suyos.
+# ======================================================================
+TASK_ID_RE = re.compile(r"^\s*-\s+id:\s*(\S+)\s*$", re.M)
+DESC_RE = re.compile(r"^\s+description:\s*(.+?)\s*$", re.M)
+SOL_TASK_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+def exam_tasks():
+    ef = STATE_DIR / "current_exam.yml"
+    if not ef.exists():
+        return []
+    txt = ef.read_text(errors="ignore")
+    out = []
+    for m in TASK_ID_RE.finditer(txt):
+        rest = txt[m.end():]
+        stop = re.search(r"^\s*-\s+id:|^\s*checks:", rest, re.M)
+        span = rest[:stop.start()] if stop else rest
+        d = DESC_RE.search(span)
+        desc = d.group(1).strip() if d else ""
+        if len(desc) > 1 and desc[0] == desc[-1] and desc[0] in "'\"":
+            desc = desc[1:-1]
+        out.append({"id": m.group(1), "desc": html.escape(desc)})
+    return out
+
+
+def read_solution(task):
+    if not SOL_TASK_RE.match(task or ""):
+        return None
+    try:
+        return (PROJECT_DIR / "soluciones" / (task + ".yml")
+                ).read_text(errors="replace")
+    except OSError:
+        return None
+
+
+# ======================================================================
 # ANSI -> HTML (el verde/rojo/cyan del CLI lucen en el navegador)
 # ======================================================================
 ESC = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
@@ -249,12 +295,22 @@ border:1px solid var(--border);border-radius:10px;padding:6px}
 .termbar{display:flex;justify-content:space-between;align-items:center;
 margin:0 0 10px}
 .wson{color:var(--grn)} .wsoff{color:var(--dim)}
+.duo{display:grid;gap:16px;align-items:stretch}
+.task{display:flex;align-items:center;gap:10px;padding:7px 0;
+border-bottom:1px solid var(--border);font-size:13px}
+.task:last-child{border-bottom:0}
+.task .tid{color:var(--cyn);font-size:11px;min-width:150px}
+.task .desc{flex:1;color:var(--fg)}
+.taskbtns{display:flex;gap:6px}
+button.mini{padding:3px 10px;font-size:11px;border-radius:999px}
+#solpre{background:#010409;border:1px solid var(--border);border-radius:10px;
+padding:14px;overflow:auto;max-height:52vh;white-space:pre-wrap;margin:0;
+font-size:12.5px}
 body.termon #terminal-card{display:block}
-body.termon .row{grid-template-columns:1fr}
-body.termon .row .card:first-child{display:none}
-body.termon #outcard{display:none}
+body.termon .duo{grid-template-columns:minmax(0,1fr) minmax(0,48%)}
 body.termon main{max-width:1400px}
 body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
+@media(max-width:1100px){body.termon .duo{grid-template-columns:1fr}}
 @media(max-width:720px){.row{grid-template-columns:1fr}#timer{text-align:left}}
 </style></head><body>
 <header>
@@ -262,7 +318,6 @@ body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
   <div class="chips">
     <span class="chip">examen: <b id="chip-exam">-</b></span>
     <span class="chip">ultimo: <b id="chip-last">-</b></span>
-    <button id="btnTerm" onclick="tToggle()">Terminal</button>
   </div>
 </header>
 <main>
@@ -281,14 +336,22 @@ body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
       <div id="timer">--:--:--</div>
     </div>
   </div>
+  <div class="card" id="taskcard">
+    <h2>Tareas del examen
+      <span class="badge">[editar] abre vim en el terminal - [solucion] solo lectura</span></h2>
+    <div id="tasklist"><div class="task"><span class="desc">sin examen - Generar para listar tareas</span></div></div>
+    <pre id="solpre" style="display:none"></pre>
+  </div>
   <div class="card">
     <h2>Ejecutar</h2>
     <button onclick="runAction('start')">Iniciar cronometro</button>
+    <button id="btnTerm" onclick="tToggle()">Terminal</button>
     <button onclick="runAction('grade')">Grade</button>
     <button onclick="runAction('doctor')">Doctor</button>
     <button style="float:right" onclick="term.textContent=''">Limpiar</button>
     <span class="badge" id="runbadge"></span>
   </div>
+  <div class="duo">
   <div class="card" id="outcard">
     <h2>Salida del simulador</h2>
     <div id="term"></div>
@@ -301,6 +364,7 @@ body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
       <button onclick="wsConnect()">Conectar</button>
     </div>
     <div id="xtermbox"></div>
+  </div>
   </div>
 </main>
 <div class="foot">solo loopback - acceso por tunel SSH (ssh -J) -
@@ -358,7 +422,7 @@ async function poll(){
   }
   polling=false;setButtons(true);
   if(j)badge((j.action||'')+' -> exit '+j.exit);
-  refreshStatus();
+  refreshStatus();loadTasks();
 }
 
 function paintTimer(){
@@ -403,7 +467,49 @@ function tToggle(){
   if(on){wsConnect();if(fit)setTimeout(()=>fit.fit(),50);}
 }
 
+// ---- LOTE 28: enunciado a la vista + vim auto-apuntado + soluciones ----
+async function loadTasks(){
+  try{
+    const j=await(await fetch('/api/exam')).json();
+    const box=$('tasklist');
+    if(!j.tasks||!j.tasks.length){
+      box.innerHTML='<div class="task"><span class="desc">sin examen - Generar para listar tareas</span></div>';
+      return;}
+    box.innerHTML=j.tasks.map(t=>
+      '<div class="task"><span class="tid">'+t.id+'</span>'+
+      '<span class="desc">'+(t.desc||'')+'</span>'+
+      '<span class="taskbtns">'+
+      '<button class="mini" data-do="edit" data-id="'+t.id+'">editar</button>'+
+      '<button class="mini" data-do="sol" data-id="'+t.id+'">solucion</button>'+
+      '</span></div>').join('');
+  }catch(e){}
+}
+$('tasklist').addEventListener('click',ev=>{
+  const b=ev.target.closest('button.mini');
+  if(!b)return;
+  if(b.dataset.do==='edit')editTask(b.dataset.id);
+  else solTask(b.dataset.id);
+});
+function editTask(id,retry){
+  if(!ws||ws.readyState!==1){
+    if(!document.body.classList.contains('termon'))tToggle();
+    if((retry||0)<20)setTimeout(()=>editTask(id,(retry||0)+1),250);
+    return;}
+  wsSend({type:'input',data:'vim ansible/playbooks/'+id+'.yml\\r'});
+}
+async function solTask(id){
+  try{
+    const r=await fetch('/api/solucion?task='+encodeURIComponent(id));
+    const j=await r.json();
+    if(!r.ok){alert(j.error||('HTTP '+r.status));return;}
+    const p=$('solpre');
+    p.textContent='### soluciones/'+id+'.yml ###\\n\\n'+j.content;
+    p.style.display='block';
+    p.scrollIntoView({block:'nearest'});
+  }catch(e){}
+}
 refreshStatus();
+loadTasks();
 setInterval(refreshStatus,10000);
 setInterval(()=>{if(lastRem!=null&&lastRem>0){lastRem--;paintTimer();}},1000);
 </script></body></html>
@@ -584,7 +690,7 @@ class TerminalSession:
 # HTTP
 # ======================================================================
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RHCE-webui/27"
+    server_version = "RHCE-webui/28"
     ws_takeover = False            # /ws: el socket ya no es del handler
 
     def finish(self):
@@ -662,6 +768,15 @@ class Handler(BaseHTTPRequestHandler):
                             "action": RUN["action"], "exit": RUN["exit"],
                             "lab": lab_state(), "last": last_results(),
                             "project": str(PROJECT_DIR)})
+        elif u.path == "/api/exam":
+            self._json(200, {"tasks": exam_tasks()})
+        elif u.path == "/api/solucion":
+            task = parse_qs(u.query).get("task", [""])[0]
+            content = read_solution(task)
+            if content is None:
+                self._json(404, {"error": "sin solucion (task invalida o inexistente)"})
+            else:
+                self._json(200, {"task": task, "content": content})
         elif u.path == "/api/output":
             try:
                 off = int(parse_qs(u.query).get("offset", ["0"])[0])
@@ -742,7 +857,8 @@ def main():
     print("   ssh -J root@<IP-laboratorio> -L %d:127.0.0.1:%d root@<IP-laboratoriob>"
           % (a.port, a.port))
     print("   y abre http://localhost:%d en el navegador" % a.port)
-    print(" Terminal:       boton [Terminal] - bash del lab via /ws (lote 27)")
+    print(" Terminal:       boton [Terminal] - bash del lab via /ws (lotes 27-28)")
+    print(" Tareas:         [editar] vim en el terminal + [solucion] modo lectura")
     print("=" * 56)
     LabServer((a.bind, a.port), Handler).serve_forever()
 
