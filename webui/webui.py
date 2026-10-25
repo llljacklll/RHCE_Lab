@@ -23,6 +23,14 @@ Regla de oro: la web es un mando a distancia del CLI.
    sesion WS) y [solucion] (soluciones/<task>.yml read-only). El
    terminal se DOCKA a la derecha sin ocultar la Salida del simulador.
    /api/exam y /api/solucion son LECTURA pura; task saneado [A-Za-z0-9_].
+ - LOTE 29 - UX del examen: la solucion se pinta ABAJO DEL TODO en su
+   propia tarjeta (la de Tareas queda intacta arriba); [editar] y
+   [mostrar solucion] son toggles ("cerrar edicion" guarda con :wq y
+   al cambiar de tarea se cierra el vim anterior y se abre el nuevo);
+   los botones de tarea y el Terminal permanecen OCULTOS hasta que
+   arranca el cronometro (status running/expired en exam_status.yml);
+   el terminal AUTOconecta al abrir el panel y "Reconectar" solo
+   aparece cuando la sesion ha caido.
 
 Solo stdlib (el python3 de la propia MV). Lanzar: ./lab.sh web
 """
@@ -306,13 +314,15 @@ button.mini{padding:3px 10px;font-size:11px;border-radius:999px}
 #solpre{background:#010409;border:1px solid var(--border);border-radius:10px;
 padding:14px;overflow:auto;max-height:52vh;white-space:pre-wrap;margin:0;
 font-size:12.5px}
+body.examoff #btnTerm{display:none}
+body.examoff .taskbtns{display:none}
 body.termon #terminal-card{display:block}
 body.termon .duo{grid-template-columns:minmax(0,1fr) minmax(0,48%)}
 body.termon main{max-width:1400px}
 body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
 @media(max-width:1100px){body.termon .duo{grid-template-columns:1fr}}
 @media(max-width:720px){.row{grid-template-columns:1fr}#timer{text-align:left}}
-</style></head><body>
+</style></head><body class="examoff">
 <header>
   <h1>RHCE_Lab - Consola del simulacro</h1>
   <div class="chips">
@@ -338,9 +348,8 @@ body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
   </div>
   <div class="card" id="taskcard">
     <h2>Tareas del examen
-      <span class="badge">[editar] abre vim en el terminal - [solucion] solo lectura</span></h2>
+      <span class="badge">[editar] vim en el terminal - [mostrar solucion] modo aprendizaje</span></h2>
     <div id="tasklist"><div class="task"><span class="desc">sin examen - Generar para listar tareas</span></div></div>
-    <pre id="solpre" style="display:none"></pre>
   </div>
   <div class="card">
     <h2>Ejecutar</h2>
@@ -361,10 +370,14 @@ body.termon #xtermbox{height:calc(100vh - 292px);min-height:340px}
       <span class="badge">aqui se HACE el examen</span></h2>
     <div class="termbar">
       <span class="wsoff" id="wsState">terminal: desconectado</span>
-      <button onclick="wsConnect()">Conectar</button>
+      <button id="btnWs" onclick="wsConnect()" style="display:none">Reconectar</button>
     </div>
     <div id="xtermbox"></div>
   </div>
+  </div>
+  <div class="card" id="solcard" style="display:none">
+    <h2>Solucion de la tarea <span class="badge" id="solbadge"></span></h2>
+    <pre id="solpre"></pre>
   </div>
 </main>
 <div class="foot">solo loopback - acceso por tunel SSH (ssh -J) -
@@ -388,6 +401,8 @@ async function refreshStatus(){
     const L=s.last&&s.last[0];
     $('chip-last').textContent=L&&L.total!=null?L.passed+'/'+L.total:'-';
     lastRem=s.lab.remaining;paintTimer();
+    document.body.classList.toggle('examoff',
+      !(s.lab.status==='running'||s.lab.status==='expired'));
     if(s.running&&!polling){off=0;term.textContent='';poll();}
   }catch(e){}
 }
@@ -442,7 +457,8 @@ function wsTxt(t,on){const e=$('wsState');e.textContent='terminal: '+t;
   e.className=on?'wson':'wsoff';}
 function wsConnect(){
   if(!window.Terminal||!window.FitAddon){
-    wsTxt('faltan /static/xterm*.js (lote 27 S1)',false);return;}
+    wsTxt('faltan /static/xterm*.js (lote 27 S1)',false);
+    $('btnWs').style.display='inline-block';return;}
   if(ws&&(ws.readyState===0||ws.readyState===1))return;
   if(!xt){
     xt=new Terminal({cursorBlink:true,fontSize:14,scrollback:5000,
@@ -454,11 +470,14 @@ function wsConnect(){
       fit.fit();wsSend({type:'resize',cols:xt.cols,rows:xt.rows});}});
   }
   wsTxt('conectando...',false);
+  $('btnWs').style.display='none';
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
   ws.onopen=()=>{wsTxt('conectado',true);
     fit.fit();wsSend({type:'resize',cols:xt.cols,rows:xt.rows});};
   ws.onmessage=e=>{if(typeof e.data==='string')xt.write(e.data);};
-  ws.onclose=()=>{wsTxt('desconectado (Conectar para reentrar)',false);};
+  ws.onclose=()=>{wsTxt('sesion cerrada',false);
+    $('btnWs').style.display='inline-block';
+    editingTask=null;paintChips();};
   ws.onerror=()=>{wsTxt('error de socket',false);};
 }
 function tToggle(){
@@ -467,7 +486,13 @@ function tToggle(){
   if(on){wsConnect();if(fit)setTimeout(()=>fit.fit(),50);}
 }
 
-// ---- LOTE 28: enunciado a la vista + vim auto-apuntado + soluciones ----
+// ---- LOTE 28/29: enunciado a la vista + toggles editar/solucion -----
+let editingTask=null,solShown=null,editBusy=false;
+function paintChips(){
+  document.querySelectorAll('#tasklist button.mini').forEach(b=>{
+    b.textContent=b.dataset.do==='edit'
+      ?(editingTask===b.dataset.id?'cerrar edicion':'editar')
+      :(solShown===b.dataset.id?'cerrar solucion':'mostrar solucion');});}
 async function loadTasks(){
   try{
     const j=await(await fetch('/api/exam')).json();
@@ -480,8 +505,9 @@ async function loadTasks(){
       '<span class="desc">'+(t.desc||'')+'</span>'+
       '<span class="taskbtns">'+
       '<button class="mini" data-do="edit" data-id="'+t.id+'">editar</button>'+
-      '<button class="mini" data-do="sol" data-id="'+t.id+'">solucion</button>'+
+      '<button class="mini" data-do="sol" data-id="'+t.id+'">mostrar solucion</button>'+
       '</span></div>').join('');
+    paintChips();
   }catch(e){}
 }
 $('tasklist').addEventListener('click',ev=>{
@@ -491,20 +517,43 @@ $('tasklist').addEventListener('click',ev=>{
   else solTask(b.dataset.id);
 });
 function editTask(id,retry){
-  if(!ws||ws.readyState!==1){
+  if(!ws||ws.readyState===3){
     if(!document.body.classList.contains('termon'))tToggle();
+    else wsConnect();}
+  if(!ws||ws.readyState!==1){
     if((retry||0)<20)setTimeout(()=>editTask(id,(retry||0)+1),250);
     return;}
-  wsSend({type:'input',data:'vim ansible/playbooks/'+id+'.yml\\r'});
+  if(editBusy)return;
+  const cmd='vim ansible/playbooks/'+id+'.yml';
+  if(editingTask===id){
+    wsSend({type:'input',data:'\\x1b:wq\\r'});
+    editingTask=null;paintChips();return;}
+  if(editingTask){
+    editBusy=true;
+    wsSend({type:'input',data:'\\x1b:wq\\r'});
+    editingTask=null;paintChips();
+    setTimeout(()=>{
+      editBusy=false;
+      if(ws&&ws.readyState===1&&!editingTask){
+        wsSend({type:'input',data:cmd+'\\r'});
+        editingTask=id;paintChips();}
+    },400);
+    return;}
+  wsSend({type:'input',data:cmd+'\\r'});
+  editingTask=id;paintChips();
 }
 async function solTask(id){
+  if(solShown===id){
+    solShown=null;$('solcard').style.display='none';paintChips();return;}
   try{
     const r=await fetch('/api/solucion?task='+encodeURIComponent(id));
     const j=await r.json();
     if(!r.ok){alert(j.error||('HTTP '+r.status));return;}
     const p=$('solpre');
     p.textContent='### soluciones/'+id+'.yml ###\\n\\n'+j.content;
-    p.style.display='block';
+    $('solbadge').textContent='soluciones/'+id+'.yml - solo lectura';
+    $('solcard').style.display='block';
+    solShown=id;paintChips();
     p.scrollIntoView({block:'nearest'});
   }catch(e){}
 }
@@ -690,7 +739,7 @@ class TerminalSession:
 # HTTP
 # ======================================================================
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RHCE-webui/28"
+    server_version = "RHCE-webui/29"
     ws_takeover = False            # /ws: el socket ya no es del handler
 
     def finish(self):
@@ -857,8 +906,9 @@ def main():
     print("   ssh -J root@<IP-laboratorio> -L %d:127.0.0.1:%d root@<IP-laboratoriob>"
           % (a.port, a.port))
     print("   y abre http://localhost:%d en el navegador" % a.port)
-    print(" Terminal:       boton [Terminal] - bash del lab via /ws (lotes 27-28)")
-    print(" Tareas:         [editar] vim en el terminal + [solucion] modo lectura")
+    print(" Terminal:       autoconecta al abrir; Reconectar solo si cae (lotes 27-29)")
+    print(" Tareas:         botones ocultos hasta Iniciar cronometro (lote 29)")
+    print("                 [editar] abre/cierra vim - [mostrar solucion] abajo del todo")
     print("=" * 56)
     LabServer((a.bind, a.port), Handler).serve_forever()
 
