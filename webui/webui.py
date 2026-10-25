@@ -36,7 +36,7 @@ from urllib.parse import urlparse, parse_qs
 #   doctor   -> ./lab.sh doctor                   (diagnostico, read-only)
 #   estado   -> state/current_exam.yml (id, time_limit en minutos) +
 #               state/exam_status.yml (status, start_time)
-#   results  -> state/results/*.log  ("Resultado Final: N/N")
+#   results  -> state/results/*.log  (informe: "Nota  : N/N")
 # ======================================================================
 HERE        = Path(__file__).resolve().parent
 PROJECT_DIR = HERE.parent
@@ -91,7 +91,7 @@ def read_runlog(offset):
 # ======================================================================
 # Lectura de estado (read-only; el servidor nunca escribe nada aqui)
 # ======================================================================
-SCORE_RE = re.compile(r"Resultado Final:\s*(\d+)\s*/\s*(\d+)")
+SCORE_RE = re.compile(r"^\s*Nota\s*:\s*(\d+)\s*/\s*(\d+)", re.M)
 
 
 def _num_with_key(txt, keypart):
@@ -189,6 +189,7 @@ INDEX_HTML = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>RHCE_Lab - Consola del simulacro</title>
+<link rel="icon" href="data:,">
 <style>
 :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--dim:#8b949e;
 --grn:#3fb950;--red:#f85149;--cyn:#39c5ff;--yel:#d29922;--acc:#58a6ff}
@@ -277,7 +278,7 @@ function setButtons(on){
 async function refreshStatus(){
   try{
     const s=await(await fetch('/api/status')).json();
-    const ex=s.lab.exam?s.lab.exam+(s.lab.time_limit?' ('+s.lab.time_limit+'m)'):'-';
+    const ex=s.lab.exam?s.lab.exam+(s.lab.time_limit?' ('+s.lab.time_limit+'m)':''):'-';
     $('chip-exam').textContent=ex;
     const L=s.last&&s.last[0];
     $('chip-last').textContent=L&&L.total!=null?L.passed+'/'+L.total:'-';
