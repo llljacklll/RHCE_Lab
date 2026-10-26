@@ -232,6 +232,14 @@ function lab_web() {
 # --no-web' o 'RHCE_NOWEB=1 ./lab.sh up'. down/stop NO matan la web: es
 # la consola para volver a levantar el lab (y si down la matara, el
 # propio webui se quedaria sin respuesta a mitad de peticion).
+# LOTE 32-C: recordatorio de acceso (la web vive en 127.0.0.1:8888 de esta
+# VM; desde el PC se alcanza con tunel SSH, doble salto con -J si procede).
+function lab_web_hint() {
+    echo "[i] Acceso consola web: tunel SSH y abre http://127.0.0.1:8888 en el PC"
+    echo "      ssh -J <usuario>@laboratorio root@192.168.188.130 -N -L 8888:127.0.0.1:8888"
+    echo "    (log: /tmp/webui.log - parar: ./lab.sh web-stop)"
+}
+
 function lab_web_start() {
     if [ "${NOWEB:-0}" = "1" ]; then
         echo "[=] Consola web desactivada (--no-web)"
@@ -243,6 +251,7 @@ function lab_web_start() {
     fi
     if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
         echo "[=] Consola web ya activa (127.0.0.1:8888)"
+        lab_web_hint
         return 0
     fi
     local dir webui_py
@@ -254,6 +263,7 @@ function lab_web_start() {
     sleep 1
     if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
         echo "[+] Consola web en background: 127.0.0.1:8888 (log /tmp/webui.log)"
+        lab_web_hint
     else
         echo "[!] La consola web no llego a arrancar (revisa /tmp/webui.log)"
     fi
