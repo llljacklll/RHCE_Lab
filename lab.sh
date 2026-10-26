@@ -93,6 +93,8 @@ PLAYBOOK_FILE=""
 EXAM_ARGS=""
 VAULT_MODE=false
 NOWEB=0
+# LOTE 32-B: dir absoluto del repo, capturado antes de cualquier cd
+LAB_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")
 
 # ----------------------------------------------------------------------------
 # [5] AYUDA — se muestra sin argumentos, con -h/--help y ante opciones
@@ -244,7 +246,7 @@ function lab_web_start() {
         return 0
     fi
     local dir webui_py
-    dir=$(dirname "$(readlink -f "$0")")
+    dir="${LAB_DIR:-$(dirname "$(readlink -f "$0")")}"
     webui_py="$dir/webui/webui.py"
     command -v python3 >/dev/null 2>&1 || { echo "[!] Sin python3: sin consola web"; return 0; }
     [ -f "$webui_py" ] || { echo "[!] No existe $webui_py: sin consola web"; return 0; }
