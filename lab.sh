@@ -92,6 +92,7 @@ DNS_CONFIG="$DEFAULT_DNS"
 PLAYBOOK_FILE=""
 EXAM_ARGS=""
 VAULT_MODE=false
+NOWEB=0
 
 # ----------------------------------------------------------------------------
 # [5] AYUDA — se muestra sin argumentos, con -h/--help y ante opciones
@@ -116,7 +117,9 @@ function print_help() {
     echo "  exam                  Mostrar menú de ayuda de exámenes"
     echo "  exam <archivo.yml>    Lanzar examen estático (ej: $0 exam easy/exam_001.yml)"
     echo "  exam --random [N] [dif]  Generar examen aleatorio (Defecto: 3 tareas, mixed)"
-    echo "  web [--port P]         Consola web en 127.0.0.1:8888 (acceso por tunel SSH)"
+    echo "  web [--port P]         Consola web en foreground (debug; 127.0.0.1:8888)"
+    echo "  web-start              Consola web en background (la lanzan up/start/reset)"
+    echo "  web-stop               Parar la consola web en background"
     echo "  exam --start          Iniciar cronómetro y mostrar examen generado"
     echo ""
     echo "Evaluación:"
@@ -126,6 +129,7 @@ function print_help() {
     echo "Opciones:"
     echo "  --dns <ip1,ip2>  Cambiar servidores DNS (Defecto: ${DEFAULT_DNS})"
     echo "  --vault       Pide contraseña para desencriptar Ansible Vault (Usar con 'run')"
+    echo "  --no-web      No lanzar la consola web con up/start/reset (o RHCE_NOWEB=1)"
     echo ""
     echo "Ejemplos:"
     echo "  $0 up"
@@ -161,8 +165,12 @@ while [[ "$#" -gt 0 ]]; do
             VAULT_MODE=true
             shift
             ;;
+        --no-web)
+            NOWEB=1
+            shift
+            ;;
         -h|--help) print_help ;;
-        up|down|start|stop|reset|shell|test|doctor|autostart|web)
+        up|down|start|stop|reset|shell|test|doctor|autostart|web|web-start|web-stop)
             ACTION="$1"
             shift
             ;;
@@ -215,16 +223,68 @@ function lab_web() {
     [ -f "$webui_py" ] || { echo -e "${RED}[-] No existe $webui_py${NC}"; exit 1; }
     exec python3 "$webui_py" "$@"
 }
+
+# LOTE 32: la web en background por defecto. lab_web_start es IDEMPOTENTE
+# (si ya hay un webui vivo no lanza otro) y NUNCA rompe el arranque del
+# lab: cualquier fallo solo avisa y devuelve 0. Opt-out: './lab.sh up
+# --no-web' o 'RHCE_NOWEB=1 ./lab.sh up'. down/stop NO matan la web: es
+# la consola para volver a levantar el lab (y si down la matara, el
+# propio webui se quedaria sin respuesta a mitad de peticion).
+function lab_web_start() {
+    if [ "${NOWEB:-0}" = "1" ]; then
+        echo "[=] Consola web desactivada (--no-web)"
+        return 0
+    fi
+    if [ "${RHCE_NOWEB:-0}" = "1" ]; then
+        echo "[=] Consola web desactivada (RHCE_NOWEB=1)"
+        return 0
+    fi
+    if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
+        echo "[=] Consola web ya activa (127.0.0.1:8888)"
+        return 0
+    fi
+    local dir webui_py
+    dir=$(dirname "$(readlink -f "$0")")
+    webui_py="$dir/webui/webui.py"
+    command -v python3 >/dev/null 2>&1 || { echo "[!] Sin python3: sin consola web"; return 0; }
+    [ -f "$webui_py" ] || { echo "[!] No existe $webui_py: sin consola web"; return 0; }
+    ( nohup python3 "$webui_py" >>/tmp/webui.log 2>&1 & )
+    sleep 1
+    if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
+        echo "[+] Consola web en background: 127.0.0.1:8888 (log /tmp/webui.log)"
+    else
+        echo "[!] La consola web no llego a arrancar (revisa /tmp/webui.log)"
+    fi
+    return 0
+}
+
+function lab_web_stop() {
+    if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
+        pkill -f 'webui/webui.py' || true
+        sleep 1
+        if pgrep -f 'webui/webui.py' >/dev/null 2>&1; then
+            echo "[!] La consola web sigue viva (revisa procesos)"
+        else
+            echo "[+] Consola web parada"
+        fi
+    else
+        echo "[=] Consola web no estaba activa"
+    fi
+    return 0
+}
+
 case "$ACTION" in
-    up)    print_banner; lab_up ;;
+    up)    print_banner; lab_up; lab_web_start ;;
     down)  lab_down; reset_exam_state ;;
-    start) lab_start ;;
+    start) lab_start; lab_web_start ;;
     stop)  lab_stop ;;
-    reset) print_banner; lab_reset ;;
+    reset) print_banner; lab_reset; lab_web_start ;;
     shell) lab_shell ;;
     doctor)   lab_doctor ;;
     autostart) lab_autostart ;;
     web)    lab_web "$@" ;;
+    web-start) lab_web_start ;;
+    web-stop)  lab_web_stop ;;
     run)   lab_run ;;
     exam)  lab_exam $EXAM_ARGS ;;
     grade) lab_grade ;;
