@@ -30,3 +30,10 @@ Thumbs.db
 *.swp
 webui/run.log
 webui/__pycache__/
+
+# --- Placeholders del Generar (webui): 0 bytes, regenerables, fuera ---
+ansible/playbooks/med_user_app.yml
+ansible/playbooks/medium_fcontext_web.yml
+ansible/playbooks/rand_pkg_httpd.yml
+ansible/playbooks/rand_pkg_mariadb.yml
+ansible/playbooks/rand_user_webmaster.yml
