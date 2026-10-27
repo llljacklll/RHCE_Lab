@@ -1,0 +1,31 @@
+# ============================================================================
+#  SOLUCION MODELO -- med_file_motd                        [dificultad: medium]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "En cada nodo, dejar escrito /etc/motd con el aviso 'Acceso
+#          monitorizado' (el fichero debe contener ese texto)"
+#
+#  EL PATRON: contenido de fichero con ansible.builtin.copy y el
+#  parametro content. Primera tarea del banco que estrena el checker
+#  'file': este grepea un patron DENTRO de la ruta que le pases, asi
+#  que lo que el enunciado pide es literal (texto exacto, sin regex).
+#
+#  Detalles finos:
+#    - content sobreescribe el fichero completo en cada ejecucion con
+#      el mismo resultado: idempotente y sin sorpresas.
+#    - El \n final del content es una convencion, no un capricho: un
+#      fichero de texto acaba en salto de linea. Al checker le da igual
+#      (grep busca la cadena), pero a un sysadmin no.
+#    - Si el patron tuviera caracteres de regex (punto, pipe, etc.),
+#      grep los interpretaria. 'Acceso monitorizado' es texto puro:
+#      sin trampas.
+# ============================================================================
+- name: Aviso en /etc/motd
+  hosts: all
+  become: true
+
+  tasks:
+    - name: /etc/motd con el texto exigido
+      ansible.builtin.copy:
+        content: "Acceso monitorizado\n"
+        dest: /etc/motd

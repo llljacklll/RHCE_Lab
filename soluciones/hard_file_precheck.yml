@@ -1,0 +1,35 @@
+# ============================================================================
+#  SOLUCION MODELO -- hard_file_precheck                   [dificultad: hard]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "Despliega en cada nodo el script /usr/local/bin/precheck.sh
+#          que empiece por la linea '#!/bin/bash' y deja sus permisos
+#          en 750"
+#
+#  EL PATRON: desplegar un script ejecutable con copy en UNA sola tarea:
+#  content escribe el cuerpo y mode deja los permisos en el mismo paso.
+#  Dos checkers vigilan esta tarea a la vez (file + permissions): el
+#  fichero debe contener el shebang y el modo debe ser exactamente 750.
+#
+#  Detalles finos:
+#    - mode: '750' con comillas: suelto, YAML lo leeria como entero y
+#      hay modulos que se lo agradecen mal. Como cadena, cero ambiguedad
+#      (y ojo: sin cero inicial, que el stat no lo trae).
+#    - El bloque content: | conserva los saltos de linea tal cual: la
+#      primera linea del fichero resultante ES el shebang.
+#    - 750 = rwx para el dueno, r-x para el grupo, nada para el resto:
+#      la forma clasica de un script de sistema en /usr/local/bin.
+# ============================================================================
+- name: Script precheck desplegado
+  hosts: all
+  become: true
+
+  tasks:
+    - name: /usr/local/bin/precheck.sh con shebang y modo 750
+      ansible.builtin.copy:
+        content: |
+          #!/bin/bash
+          # precheck: comprobacion previa del nodo
+          echo "precheck OK"
+        dest: /usr/local/bin/precheck.sh
+        mode: '750'

@@ -233,3 +233,57 @@ tasks:
         type: selinux_fcontext
         name: public_content_rw_t
         path: "/srv/incoming(/.*)?"
+
+  # ================= TASK PACK #4 =================
+  # Estreno en el pool de los checkers file y permissions:
+  # existian en core/checkers/ desde el principio pero ninguna
+  # tarea del banco los llamaba (cobertura 10/12 tipos). Combo
+  # paquete+servicio nuevo y nombres/GIDs/rutas nuevos para no
+  # pisar ninguna tarea previa (regla de combinabilidad del pool).
+  # Contenidos y modos literales en el enunciado: el alumno ve
+  # exactamente lo que el checker exige.
+  - id: rand_pkg_wget
+    difficulty: easy
+    description: "Instalar la utilidad de descargas wget"
+    checks:
+      - type: package
+        name: wget
+  - id: rand_group_ops
+    difficulty: easy
+    description: "Crear el grupo 'ops' con GID 3200"
+    checks:
+      - type: group
+        name: ops
+        path: "3200"
+  - id: med_pkg_svc_postfix
+    difficulty: medium
+    description: "Instalar postfix y dejar el servicio postfix activo"
+    checks:
+      - type: package
+        name: postfix
+      - type: service
+        name: postfix
+  - id: med_file_motd
+    difficulty: medium
+    description: "En cada nodo, dejar escrito /etc/motd con el aviso 'Acceso monitorizado' (el fichero debe contener ese texto)"
+    checks:
+      - type: file
+        name: "Acceso monitorizado"
+        path: /etc/motd
+  - id: hard_file_precheck
+    difficulty: hard
+    description: "Despliega en cada nodo el script /usr/local/bin/precheck.sh que empiece por la linea '#!/bin/bash' y deja sus permisos en 750"
+    checks:
+      - type: file
+        name: '#!/bin/bash'
+        path: /usr/local/bin/precheck.sh
+      - type: permissions
+        name: "750"
+        path: /usr/local/bin/precheck.sh
+  - id: hard_perms_setgid
+    difficulty: hard
+    description: "Crea el grupo 'proj' y el directorio /srv/proyectos propiedad del grupo proj con permisos 2770 (setgid)"
+    checks:
+      - type: permissions
+        name: "2770"
+        path: /srv/proyectos

@@ -49,6 +49,18 @@ docker exec -u ansible control ansible-playbook /home/ansible/block_rescue.yml
 | hard_cron | Cron para `ansible`: `/usr/bin/echo backup` | hard | `cron` con `user` + `special_time` |
 | hard_cron_root | Cron para `root`: `/usr/local/bin/backup.sh` | hard | `cron` root + stub ejecutable |
 | hard_block_rescue | `block`/`rescue`/`always` contra todos los nodos | hard | control de errores declarativo |
+| rand_pkg_nfsutils | Instalar los utilitarios de cliente NFS (`nfs-utils`) | easy | `package` genérico |
+| rand_group_qa | Crear el grupo `qa` con GID 3100 | easy | `group` + GID fijo |
+| med_user_dbadmin | Crear el usuario `dbadmin` con UID 2700 | medium | `user` + UID fijo |
+| med_pkg_svc_samba | Instalar samba y dejar el servicio `smb` activo | medium | patrón paquete + servicio |
+| hard_cron_purge | Cron para `root`: `/usr/local/bin/purge.sh` | hard | `cron` root + stub ejecutable |
+| hard_fcontext_multi | SELinux: `/srv/tools` y `/srv/incoming`, dos reglas en una tarea | hard | `sefcontext` multiparte |
+| rand_pkg_wget | Instalar la utilidad de descargas `wget` | easy | `package` genérico |
+| rand_group_ops | Crear el grupo `ops` con GID 3200 | easy | `group` + GID fijo |
+| med_pkg_svc_postfix | Instalar postfix y dejar el servicio `postfix` activo | medium | patrón paquete + servicio |
+| med_file_motd | Dejar en `/etc/motd` el aviso `Acceso monitorizado` | medium | `copy` + `content` (checker `file`) |
+| hard_file_precheck | Script `/usr/local/bin/precheck.sh` con shebang y modo 750 | hard | `copy` con `content`+`mode` (`file`+`permissions`) |
+| hard_perms_setgid | Grupo `proj` + `/srv/proyectos` en modo 2770 setgid | hard | `group` + `file` con modo especial |
 
 En el listado del examen ves la descripción; en `./lab.sh grade` ves el
 `task_id` de cada check — ambos te llevan al fichero.

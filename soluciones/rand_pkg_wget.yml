@@ -1,0 +1,28 @@
+# ============================================================================
+#  SOLUCION MODELO -- rand_pkg_wget                        [dificultad: easy]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "Instalar la utilidad de descargas wget"
+#
+#  EL PATRON: paquetes con ansible.builtin.package. Es el modulo agnostico
+#  del backend: resuelve yum/dnf por ti, asi que el mismo playbook vale en
+#  cualquier familia RHEL. state: present deja la instalacion idempotente
+#  (si el paquete ya esta, la tarea vuelve verde sin cambios).
+#
+#  Detalles finos:
+#    - El nombre va EXACTO como lo conoce el repositorio: 'wget' a secas,
+#      sin version ni arquitectura. Un nombre mal escrito no es un aviso,
+#      es un FAIL del modulo.
+#    - hosts: all + become: true: el enunciado no dice nodo concreto, y
+#      el patron del banco es estado identico en los 3 nodos. Sin become
+#      no hay permiso para instalar.
+# ============================================================================
+- name: wget presente en todos los nodos
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Paquete wget instalado
+      ansible.builtin.package:
+        name: wget
+        state: present

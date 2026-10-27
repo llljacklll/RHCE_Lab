@@ -1,0 +1,24 @@
+# ============================================================================
+#  SOLUCION MODELO -- rand_group_ops                       [dificultad: easy]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "Crear el grupo 'ops' con GID 3200"
+#
+#  EL PATRON: grupos con ansible.builtin.group. El GID se pide con el
+#  argumento gid (entero, sin comillas: es un numero, no un string).
+#
+#  Por que fijar el GID importa: sin el, el sistema asigna el siguiente
+#  GID libre y el checker (que exige 3200 exacto) daria FAIL. state:
+#  present es el default del modulo, pero se deja escrito por
+#  legibilidad (la intencion se lee, no se adivina).
+# ============================================================================
+- name: Grupo de operaciones con GID fijo
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Grupo ops con GID 3200
+      ansible.builtin.group:
+        name: ops
+        gid: 3200
+        state: present

@@ -1,0 +1,32 @@
+# ============================================================================
+#  SOLUCION MODELO -- med_pkg_svc_postfix                  [dificultad: medium]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "Instalar postfix y dejar el servicio postfix activo"
+#
+#  EL PATRON: el combo paquete+servicio en dos tareas encadenadas. El
+#  orden NO es negociable: el servicio no puede arrancar si el paquete
+#  no esta, y ansible ejecuta las tareas de una play en el orden escrito.
+#
+#  Detalles finos:
+#    - enabled: true ademas de state: started: el checker mira el estado
+#      en runtime, pero un servicio que no sobrevive a un reinicio es un
+#      examen suspenso a medio plazo. Se deja habilitado y punto.
+#    - El servicio se llama 'postfix', igual que el paquete. No todos los
+#      combos coinciden (samba->smb): aqui si, no lo compliques.
+# ============================================================================
+- name: postfix instalado y en marcha
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Paquete postfix presente
+      ansible.builtin.package:
+        name: postfix
+        state: present
+
+    - name: Servicio postfix activo y habilitado
+      ansible.builtin.service:
+        name: postfix
+        state: started
+        enabled: true

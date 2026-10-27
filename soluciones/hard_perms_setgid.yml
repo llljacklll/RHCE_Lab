@@ -1,0 +1,38 @@
+# ============================================================================
+#  SOLUCION MODELO -- hard_perms_setgid                    [dificultad: hard]
+#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
+#  TAREA: "Crea el grupo 'proj' y el directorio /srv/proyectos propiedad
+#          del grupo proj con permisos 2770 (setgid)"
+#
+#  EL PATRON: directorio compartido de grupo con el bit setgid. Dos
+#  tareas: primero el grupo, despues el directorio. El 2 inicial de
+#  2770 es el bit setgid: todo lo que se cree DENTRO hereda el grupo
+#  del directorio en vez del grupo primario de quien lo crea. Es la
+#  forma canonica de preparar una carpeta compartida.
+#
+#  Detalles finos:
+#    - La tarea es autocontenida: el grupo lo crea el propio playbook.
+#      El pool no permite depender de que otra tarea haya corrido antes.
+#    - state: directory crea la ruta si falta y garantiza que es un
+#      directorio, no un fichero.
+#    - group: proj fija el grupo PROPIETARIO; el setgid es el 2 del
+#      modo. El checker compara stat -c %a con 2770 exacto: sin el bit
+#      especial, 770 no basta.
+# ============================================================================
+- name: Directorio compartido con setgid
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Grupo proj presente
+      ansible.builtin.group:
+        name: proj
+        state: present
+
+    - name: /srv/proyectos con grupo proj y modo 2770
+      ansible.builtin.file:
+        path: /srv/proyectos
+        state: directory
+        group: proj
+        mode: '2770'
