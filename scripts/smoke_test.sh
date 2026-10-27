@@ -48,8 +48,8 @@ done
 hdr "4/5 LVM usable y nvme real oculto"
 SZ=$(docker exec node1 blockdev --getsize64 /dev/loop0 2>/dev/null)
 [ "$SZ" = "1073741824" ] && ok "node1: /dev/loop0 = 1G" || bad "node1: /dev/loop0 raro (tam=$SZ)"
-L=$(docker exec node1 pvs 2>/dev/null | wc -l)
-[ "$L" -eq 0 ] && ok "filtro LVM: el nvme real de la MV no aparece" || bad "pvs muestra $L lineas (filtro roto)"
+PVS=$(docker exec node1 pvs --noheadings -o pv_name 2>/dev/null | tr -d " ")
+[ "$PVS" = "/dev/loop0" ] && ok "filtro LVM: 1 PV (/dev/loop0), nvme real oculto" || bad "filtro LVM: pvs=[$PVS] (esperado /dev/loop0)"
 
 hdr "5/5 Ansible Vault"
 docker exec control ansible-vault view --vault-password-file /opt/ansible/files/.vault_pass \
