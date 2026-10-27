@@ -1,26 +1,36 @@
-# ============================================================================
-#  SOLUCION MODELO -- hard_fcontext_multi                  [dificultad: hard]
+# ===========================================================================
+#  SOLUCION MODELO -- hard_fcontext_multi          [dificultad: hard]
 #                     (Task Pack #3)
-# ----------------------------------------------------------------------------
-#  TAREA: "SELinux: /srv/tools como public_content_t y /srv/incoming
-#  como public_content_rw_t, con sus reglas fcontext y restorecon"
+# ---------------------------------------------------------------------------
+#  TAREA: SELinux: /srv/tools como public_content_t y /srv/incoming
+#  como public_content_rw_t, con sus reglas fcontext y restorecon.
 #
 #  EL PATRON: dos reglas fcontext en un mismo play (la version
-#  multiparte del fcontext del pack #2). La mecanica por cada arbol:
-#    1. crear el directorio con un fichero dentro (ansible.builtin.file),
-#    2. registrar la REGLA en la policy con community.general.sefcontext
-#       (el equivalente declarativo de semanage fcontext -a),
+#  multiparte del fcontext de medium). Mecanica por cada arbol:
+#    1. crear el directorio con un fichero dentro (file),
+#    2. registrar la REGLA en la policy con semanage fcontext -a,
 #    3. materializar el etiquetado con restorecon -R (la regla NO
 #       retiqueta lo ya creado: restorecon es el paso que lo aplica).
 #
-#  Por que DOS contextos distintos: public_content_t es el de lectura
-#  compartida para varios servicios; public_content_rw_t es el de
-#  escritura compartida (samba/nfs con sus booleanos anon_*). Elegir
-#  el contexto correcto es la mitad de la tarea.
+#  POR QUE semanage POR command Y NO community.general.sefcontext:
+#    - sefcontext exige SELinux habilitado en el kernel; en los
+#      contenedores del lab falla con "SELinux is disabled".
+#    - semanage opera sobre la policy store, que SI es real y
+#      persistente dentro del contenedor aunque el kernel no cargue
+#      SELinux: exactamente lo que el checker valida.
 #
-#  El checker (check_selinux_fcontext.sh) valida la REGLA en la policy
-#  (semanage fcontext -l): spec exacta + contexto exacto por check.
-# ============================================================================
+#  Por que DOS contextos distintos: public_content_t es el de
+#  lectura compartida para varios servicios; public_content_rw_t es
+#  el de escritura compartida (samba/nfs con sus booleanos anon_*).
+#  Elegir el contexto correcto es la mitad de la tarea.
+#
+#  El restorecon va condicionado al hecho selinux: en un host con
+#  SELinux activo ejecuta; en el contenedor (Disabled) se salta
+#  (no hay kernel que relabele) y el checker valida la policy.
+#
+#  VALIDACION: check_selinux_fcontext.sh -- valida la REGLA en la
+#  policy (semanage fcontext -l): spec exacta + contexto exacto.
+# ===========================================================================
 - name: Contextos SELinux para arboles compartidos
   hosts: all
   become: true
@@ -50,19 +60,30 @@
         state: touch
         mode: "0644"
 
-    - name: Regla fcontext para /srv/tools
-      community.general.sefcontext:
-        target: "/srv/tools(/.*)?"
-        setype: public_content_t
-        state: present
+    - name: Regla fcontext /srv/tools -> public_content_t
+      ansible.builtin.command:
+        cmd: >-
+          semanage fcontext -a -t public_content_t
+          '/srv/tools(/.*)?'
+      register: regla_tools
+      changed_when: regla_tools.rc == 0
+      failed_when: >-
+        regla_tools.rc != 0 and 'already'
+        not in (regla_tools.stderr ~ regla_tools.stdout)
 
-    - name: Regla fcontext para /srv/incoming
-      community.general.sefcontext:
-        target: "/srv/incoming(/.*)?"
-        setype: public_content_rw_t
-        state: present
+    - name: Regla fcontext /srv/incoming -> public_content_rw_t
+      ansible.builtin.command:
+        cmd: >-
+          semanage fcontext -a -t public_content_rw_t
+          '/srv/incoming(/.*)?'
+      register: regla_incoming
+      changed_when: regla_incoming.rc == 0
+      failed_when: >-
+        regla_incoming.rc != 0 and 'already'
+        not in (regla_incoming.stderr ~ regla_incoming.stdout)
 
-    - name: Relabelado de ambos arboles
+    - name: Relabelado de ambos arboles (solo con SELinux activo)
       ansible.builtin.command:
         cmd: restorecon -Rv /srv/tools /srv/incoming
-      changed_when: true
+      changed_when: false
+      when: ansible_facts['selinux']['status'] | lower == 'enabled'

@@ -1,56 +1,100 @@
-# ============================================================================
-#  SOLUCIÓN MODELO — hard_block_rescue                   [dificultad: hard]
+# ===========================================================================
+#  SOLUCION MODELO -- hard_block_rescue            [dificultad: hard]
 #                     (Task Pack #2)
-# ----------------------------------------------------------------------------
-#  TAREA: "Con un playbook guardado en control:/home/ansible/block_rescue.yml
-#  (ruta EXIGIDA por el enunciado): un block que intenta instalar un
-#  paquete inexistente, un rescue que instala 'tree' como plan B y un
-#  always que crea /tmp/block_ok en cada nodo."
+# ---------------------------------------------------------------------------
+#  TAREA: con un playbook guardado en control:/home/ansible/
+#  block_rescue.yml (ruta EXIGIDA por el enunciado): un block que
+#  intenta instalar un paquete inexistente, un rescue que instala
+#  'tree' como plan B y un always que crea /tmp/block_ok en cada nodo.
 #
-#  EL PATRÓN block/rescue/always (control de errores DECLARATIVO):
-#    - block:   tareas "normales". Si ALGUNA falla, NO se aborta el play:
-#               se salta a rescue con el host marcado como 'rescued'.
-#    - rescue:  el plan B. Aquí instala 'tree' porque 'paquete-fantasma'
-#               NO existe en ningún repo: el fallo del block está
-#               GARANTIZADO, así que el rescue se ejecuta SIEMPRE que
-#               corre este playbook (es justo lo que la tarea enseña).
-#    - always:  se ejecuta TANTO si todo fue bien como si hubo rescate:
-#               marcadores, limpieza, notificaciones. /tmp/block_ok es
-#               la PRUEBA de que always corrió pese al fallo inicial.
+#  DOBLE ENTREGA (por que DOS plays):
+#    - Play 1 (control, localhost): CREA el entregable
+#      /home/ansible/block_rescue.yml con el contenido exacto
+#      block/rescue/always. Es el fichero que el checker inspecciona
+#      dentro del contenedor control. Sin become: /home/ansible es
+#      el HOME del propio usuario, no hace falta root.
+#    - Play 2 (nodos): EJECUTA la misma logica contra todos los
+#      nodos (equivale a ansible-playbook block_rescue.yml): block
+#      instala paquete-fantasma (fallo garantizado), rescue instala
+#      tree y always deja /tmp/block_ok.
 #
-#  DOBLE FUNCIÓN DE ESTE FICHERO:
-#    - Solución de referencia para el alumno.
-#    - PLAY DE PRUEBA del checker (core/checkers/check_block_rescue.sh): el
-#      checker ejecuta este mismo playbook contra los nodos y comprueba
-#      que /tmp/block_ok aparece en TODOS: demuestra que el rescue y el
-#      always funcionaron de verdad.
+#  EL PATRON block/rescue/always:
+#    - block:  tareas "normales". Si una falla, el play NO se
+#              aborta: se salta a rescue (host marcado como rescued).
+#    - rescue: el plan B. Aqui instala 'tree' porque
+#              'paquete-fantasma' no existe en ningun repo: el
+#              fallo del block esta GARANTIZADO, asi que el rescue
+#              corre siempre (es justo lo que la tarea ensena).
+#    - always: corre tanto si todo fue bien como si hubo rescate:
+#              /tmp/block_ok es la prueba de que always corrio
+#              pese al fallo inicial.
 #
 #  DETALLE FINO:
-#    - mode SIEMPRE entre comillas: YAML 1.1 leería 0644 sin comillas
-#      como octal (420 decimal). Con PyYAML "coincide" que 420 decimal
-#      es 0644 octal y funciona por casualidad — no dependas de esa lotería.
+#    - mode SIEMPRE entre comillas: YAML 1.1 leeria 0644 sin
+#      comillas como octal (420 decimal).
 #
-#  NOTA DE RUTA: el enunciado exige EXACTAMENTE
-#  control:/home/ansible/block_rescue.yml (véase soluciones/README.md).
-# ============================================================================
-- name: Bloque con rescate y siempre
+#  VALIDACION: core/checkers/check_block_rescue.sh -- (1) el
+#  playbook existe en control:/home/ansible/block_rescue.yml y
+#  declara block/rescue/always, (2) tree instalado en cada nodo,
+#  (3) /tmp/block_ok en cada nodo.
+# ===========================================================================
+- name: Entregable en el control -- /home/ansible/block_rescue.yml
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Directorio del entregable
+      ansible.builtin.file:
+        path: /home/ansible
+        state: directory
+        mode: "0755"
+
+    - name: Crear el playbook block/rescue/always
+      ansible.builtin.copy:
+        dest: /home/ansible/block_rescue.yml
+        mode: "0644"
+        content: |
+          - name: Bloque con rescate
+            hosts: all
+            become: true
+
+            tasks:
+              - block:
+                  - name: Intento condenado a fallar
+                    ansible.builtin.dnf:
+                      name: paquete-fantasma
+                      state: present
+                rescue:
+                  - name: Plan B cuando el paquete no existe
+                    ansible.builtin.dnf:
+                      name: tree
+                      state: present
+                always:
+                  - name: Marcador de ejecucion
+                    ansible.builtin.file:
+                      path: /tmp/block_ok
+                      state: touch
+                      mode: "0644"
+
+- name: Ejecucion de la logica block/rescue/always en los nodos
   hosts: all
   become: true
 
   tasks:
-    - block:                        # la sección "intentar"
+    - block:
         - name: Intento condenado a fallar
           ansible.builtin.dnf:
-            name: paquete-fantasma   # no existe en ningún repo: fallo seguro
+            name: paquete-fantasma
             state: present
-      rescue:                        # el plan B: SOLO si el block falló
+      rescue:
         - name: Plan B cuando el paquete no existe
           ansible.builtin.dnf:
-            name: tree               # paquete real: el rescue SÍ debe funcionar
+            name: tree
             state: present
-      always:                        # se ejecunte bien o mal: SIEMPRE
-        - name: Marcador de ejecucion en cada nodo
+      always:
+        - name: Marcador de ejecucion
           ansible.builtin.file:
-            path: /tmp/block_ok      # la prueba de que always corrió
+            path: /tmp/block_ok
             state: touch
-            mode: "0644"             # comillas SIEMPRE (octal de YAML)
+            mode: "0644"

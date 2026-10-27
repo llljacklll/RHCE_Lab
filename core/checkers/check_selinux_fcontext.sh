@@ -44,8 +44,11 @@ if [ -n "$rules" ]; then
     # 1b) matchpathcon: la policy mapea la ruta al tipo esperado
     #     (cubre: el alumno metió /web(/.*)? y la tarea pide /web/fichero)
     local mapped
-    mapped=$(docker exec "$node" matchpathcon "$bare" 2>/dev/null | awk '{print $2}')
-    mapped="${mapped##*:}"
+    # el tipo es el 3er campo del contexto
+    # (user:role:TYPE:level); antes ##*: dejaba s0 y 1b
+    # jamas podia pasar
+    mapped=$(docker exec "$node" matchpathcon "$bare" 2>/dev/null \
+        | awk '{print $2}' | cut -d: -f3)
     if [ "$mapped" = "$ftype" ]; then
         echo "OK"
         return 0
