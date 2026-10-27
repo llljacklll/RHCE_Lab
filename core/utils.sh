@@ -105,6 +105,9 @@ function ensure_state_dir() {
 # ------------------------------------------------------------
 function reset_exam_state() {
     if [ -f "$TIMER_PID_FILE" ]; then
+        # mata primero a los HIJOS (el sleep del cronometro) mientras
+        # el padre vive: el kill del padre deja el sleep huerfano
+        pkill -P "$(cat "$TIMER_PID_FILE")" 2>/dev/null || true
         kill "$(cat "$TIMER_PID_FILE")" 2>/dev/null
         rm -f "$TIMER_PID_FILE"
     fi

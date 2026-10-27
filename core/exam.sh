@@ -241,6 +241,9 @@ function _start_timer() {
     # haber uno; ocurre si se arranca un segundo examen sin
     # pasar por down/grade entre medias.
     if [ -f "$TIMER_PID_FILE" ]; then
+        # hijos primero (sleep del timer anterior), luego el padre:
+        # el kill del padre deja el sleep como huerfano
+        pkill -P "$(cat "$TIMER_PID_FILE")" 2>/dev/null || true
         kill "$(cat "$TIMER_PID_FILE")" 2>/dev/null
         rm -f "$TIMER_PID_FILE"
     fi
