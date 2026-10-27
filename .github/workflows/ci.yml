@@ -3,30 +3,35 @@
 # ------------------------------------------------------------
 #  QUÉ ES: la batería que GitHub Actions corre en cada push a
 #  'main', en cada pull_request y bajo demanda (workflow_dispatch).
-#  4 puertas, todas de solo lectura: aquí no se ejecuta nada del
+#  5 puertas, todas de solo lectura: aquí no se ejecuta nada del
 #  laboratorio, solo se valida el estado del repo.
 #
-#  PUERTA 1/4 — bash -n sobre TODOS los .sh (find -print0):
+#  PUERTA 1/5 — bash -n sobre TODOS los .sh (find -print0):
 #    sintaxis sin ejecutar. Cubre también directorios ocultos
 #    porque find sí baja a los que empiezan por punto (glob no).
-#  PUERTA 2/4 — PyYAML sobre todos los .yml/.yaml:
+#  PUERTA 2/5 — PyYAML sobre todos los .yml/.yaml:
 #    parseo con safe_load_all; los vault cifrados se saltan
 #    (detecta 'ANSIBLE_VAULT' en los primeros 200 bytes).
 #    NOTA C: glob(**) de Python NO baja a directorios ocultos,
 #    así que los YAML de .github/ quedaban fuera de SU propia
 #    batería (un workflow roto pasaba el CI sin acusarse). El
 #    glob explícito de esta puerta lo corrige.
-#  PUERTA 3/4 — heredocs de Python embebidos en los .sh:
+#  PUERTA 3/5 — heredocs de Python embebidos en los .sh:
 #    detecta 'pythonN - << DELIM', sustituye $(cmd), ${VAR} y
 #    $VAR por '3' (para que compile) y compila el cuerpo con
 #    compile(). LIMITACIÓN CONOCIDA: exige el terminador en la
 #    columna 0; un heredoc indentado dentro de un if/for no
 #    casa y queda fuera del radar (ni se audita ni falla), la
 #    misma familia de hueco que ui/*.sh en scripts/audit_py.sh.
-#  PUERTA 4/4 — integridad checks <-> checkers: cada 'type' de
+#  PUERTA 4/5 — integridad checks <-> checkers: cada 'type' de
 #    scenarios/**/*.yml (tanto el 'checks' de cabecera como los
 #    'tasks[].checks') debe tener su core/checkers/check_<type>.sh.
-#
+#  PUERTA 5/5 — anti-huérfanos (core/lint_pool.sh): el banco
+#    debe quedar alineado 1:1 por task_id entre
+#    scenarios/task_pool.yml, soluciones/*.yml y la tabla del
+#    README de soluciones; tarea sin solución, solución
+#    fantasma o fila ausente/sobrante rompen el push.
+
 #  TRAMPA YAML 1.1: el 'on:' sin comillas de arriba es booleano
 #  True para PyYAML (safe_load devuelve {True: {...}, 'jobs': ...}).
 #  GitHub Actions lo parsea correctamente; la trampa solo muerde
@@ -50,7 +55,7 @@ jobs:
       - name: Instalar PyYAML
         run: python3 -m pip install --quiet pyyaml
 
-      - name: "1/4 bash -n: sintaxis de todos los .sh"
+      - name: "1/5 bash -n: sintaxis de todos los .sh"
         run: |
           rc=0
           while IFS= read -r -d '' f; do
@@ -58,7 +63,7 @@ jobs:
           done < <(find . -name '*.sh' -print0)
           if [ "$rc" -eq 0 ]; then echo "bash -n: todos los .sh OK"; else exit 1; fi
 
-      - name: "2/4 YAML: todos los .yml parsean"
+      - name: "2/5 YAML: todos los .yml parsean"
         run: |
           python3 - << 'PYCI'
           import glob, sys, yaml
@@ -76,7 +81,7 @@ jobs:
           sys.exit(bad)
           PYCI
 
-      - name: "3/4 Python embebido: heredocs de python compilan"
+      - name: "3/5 Python embebido: heredocs de python compilan"
         run: |
           python3 - << 'PYCI'
           import glob, re, sys
@@ -97,7 +102,7 @@ jobs:
           sys.exit(bad)
           PYCI
 
-      - name: "4/4 Checkers: todo tipo de check tiene su plugin"
+      - name: "4/5 Checkers: todo tipo de check tiene su plugin"
         run: |
           python3 - << 'PYCI'
           import glob, os, sys, yaml
@@ -121,3 +126,6 @@ jobs:
           print('Checkers:', 'OK' if not bad else 'ERRORES')
           sys.exit(bad)
           PYCI
+
+      - name: "5/5 Anti-huerfanos: pool <-> soluciones <-> README"
+        run: bash core/lint_pool.sh
