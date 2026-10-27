@@ -68,7 +68,10 @@ function lab_run() {
     # normal: sin eval, bash pasaría las comillas COMO
     # PARTE del valor a ssh y la opción rompería. El cmd
     # completo (larga línea de abajo) es un solo string.
-    local cmd="docker exec -it -w /opt/ansible control ansible-playbook -i /opt/ansible/inventory/hosts.ini -e \"ansible_become_password=ansible\" --ssh-common-args=\"-o StrictHostKeyChecking=no\""
+    # -t solo con TTY en stdin: interactivo igual que hoy y ademas scriptable (bateria/CI)
+    local tty_flag=""
+    if [ -t 0 ]; then tty_flag="-t"; fi
+    local cmd="docker exec -i $tty_flag -w /opt/ansible control ansible-playbook -i /opt/ansible/inventory/hosts.ini -e \"ansible_become_password=ansible\" --ssh-common-args=\"-o StrictHostKeyChecking=no\""
 
     # Modo Vault: pide por pantalla la contraseña de
     # desencriptado (interactivo gracias al -it de arriba).
