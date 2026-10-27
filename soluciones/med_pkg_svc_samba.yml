@@ -1,0 +1,32 @@
+# ============================================================================
+#  SOLUCION MODELO -- med_pkg_svc_samba                  [dificultad: medium]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Instalar samba y dejar el servicio smb activo"
+#
+#  EL PATRON: el combo paquete+servicio (mismo esqueleto que chrony y
+#  vsftpd del pool): install con dnf y despues service con
+#  enabled+started. El ORDEN importa: si el service corre antes del
+#  dnf, el unit todavia no existe y el play falla. Ansible no reordena
+#  tareas: la secuencialidad es responsabilidad del autor.
+#
+#  enabled: true es lo que sobrevive al reboot (is-enabled), state:
+#  started lo que levanta el daemon ahora (is-active). smb arranca con
+#  el smb.conf minimo de la instalacion: no hacen falta shares para
+#  que el daemon este activo.
+# ============================================================================
+- name: Servidor Samba instalado y activo
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Paquete samba presente
+      ansible.builtin.dnf:
+        name: samba
+        state: present
+
+    - name: Servicio smb habilitado y arrancado
+      ansible.builtin.service:
+        name: smb
+        enabled: true
+        state: started

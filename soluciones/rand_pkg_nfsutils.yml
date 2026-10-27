@@ -1,0 +1,22 @@
+# ============================================================================
+#  SOLUCION MODELO -- rand_pkg_nfsutils                     [dificultad: easy]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Instalar los utilitarios de cliente NFS (nfs-utils)"
+#
+#  EL PATRON: instalacion de paquetes con el modulo dnf (el estandar de
+#  RHEL/Rocky). state: present = instalado, y en futuras corridas el
+#  modulo es idempotente (si ya esta, no hace nada).
+#
+#  NOTA: nfs-utils trae mount.nfs, showmount y los helpers de NFSv4:
+#  la base para cualquier tarea de montajes NFS que venga despues.
+# ============================================================================
+- name: Instalar los utilitarios cliente NFS
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Paquete nfs-utils presente
+      ansible.builtin.dnf:
+        name: nfs-utils
+        state: present

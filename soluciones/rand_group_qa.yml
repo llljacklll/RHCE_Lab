@@ -1,0 +1,24 @@
+# ============================================================================
+#  SOLUCION MODELO -- rand_group_qa                         [dificultad: easy]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Crear el grupo 'qa' con GID 3100"
+#
+#  EL PATRON: grupos con ansible.builtin.group. El GID se pide con el
+#  argumento gid (entero, sin comillas: es un numero, no un string).
+#
+#  Por que fijar el GID importa: sin el, el sistema asigna el siguiente
+#  GID libre y el checker (que exige 3100 exacto) daria FAIL. state:
+#  present es el default del modulo, pero se deja escrito por
+#  legibilidad (la intencion se lee, no se adivina).
+# ============================================================================
+- name: Grupo de QA con GID fijo
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Grupo qa con GID 3100
+      ansible.builtin.group:
+        name: qa
+        gid: 3100
+        state: present

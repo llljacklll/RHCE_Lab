@@ -1,0 +1,24 @@
+# ============================================================================
+#  SOLUCION MODELO -- med_user_dbadmin                   [dificultad: medium]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Crear el usuario 'dbadmin' con UID 2700"
+#
+#  EL PATRON: usuarios con ansible.builtin.user. Igual que con los GID,
+#  el UID se fija con uid (entero): sin el, el sistema eligiria el
+#  siguiente libre y el checker (2700 exacto) daria FAIL.
+#
+#  Detalle didactico: crear el usuario NO crea password (sin password
+#  la cuenta queda bloqueada para login por password, lo canonico en
+#  cuentas de servicio). El checker valida existencia + UID exacto.
+# ============================================================================
+- name: Usuario administrador de BD con UID fijo
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Usuario dbadmin con UID 2700
+      ansible.builtin.user:
+        name: dbadmin
+        uid: 2700
+        state: present

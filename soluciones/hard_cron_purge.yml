@@ -1,0 +1,31 @@
+# ============================================================================
+#  SOLUCION MODELO -- hard_cron_purge                      [dificultad: hard]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "Programar cron para root que ejecute '/usr/local/bin/purge.sh'"
+#
+#  EL PATRON: cron con ansible.builtin.cron. El modulo escribe la linea
+#  en el crontab del usuario (path del checker) con el comando exacto
+#  como job (name del checker). Detalles finos:
+#    - user: root. Sin el, el modulo escribiria en el crontab del
+#      usuario remoto de la conexion; aqui coincide, pero se deja
+#      explicito para que la intencion se lea.
+#    - name: etiqueta del job (el comentario # en el crontab). Dos jobs
+#      con el MISMO name se PISAN entre si: por eso debe ser unico.
+#    - special_time: daily. El modulo exige una planificacion (los
+#      campos sueltos van a '*' si nadie los fija: job cada minuto).
+#      El enunciado no exige horario (el checker valida comando +
+#      usuario), asi que @daily es una eleccion explicita y razonable.
+# ============================================================================
+- name: Cron de purga para root
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Job purge.sh en el crontab de root
+      ansible.builtin.cron:
+        name: purga diaria
+        user: root
+        special_time: daily
+        job: /usr/local/bin/purge.sh
+        state: present

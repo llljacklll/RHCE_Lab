@@ -1,0 +1,68 @@
+# ============================================================================
+#  SOLUCION MODELO -- hard_fcontext_multi                  [dificultad: hard]
+#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
+#  TAREA: "SELinux: /srv/tools como public_content_t y /srv/incoming
+#  como public_content_rw_t, con sus reglas fcontext y restorecon"
+#
+#  EL PATRON: dos reglas fcontext en un mismo play (la version
+#  multiparte del fcontext del pack #2). La mecanica por cada arbol:
+#    1. crear el directorio con un fichero dentro (ansible.builtin.file),
+#    2. registrar la REGLA en la policy con community.general.sefcontext
+#       (el equivalente declarativo de semanage fcontext -a),
+#    3. materializar el etiquetado con restorecon -R (la regla NO
+#       retiqueta lo ya creado: restorecon es el paso que lo aplica).
+#
+#  Por que DOS contextos distintos: public_content_t es el de lectura
+#  compartida para varios servicios; public_content_rw_t es el de
+#  escritura compartida (samba/nfs con sus booleanos anon_*). Elegir
+#  el contexto correcto es la mitad de la tarea.
+#
+#  El checker (check_selinux_fcontext.sh) valida la REGLA en la policy
+#  (semanage fcontext -l): spec exacta + contexto exacto por check.
+# ============================================================================
+- name: Contextos SELinux para arboles compartidos
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Directorio /srv/tools
+      ansible.builtin.file:
+        path: /srv/tools
+        state: directory
+        mode: "0755"
+
+    - name: Fichero de prueba en tools
+      ansible.builtin.file:
+        path: /srv/tools/readme.txt
+        state: touch
+        mode: "0644"
+
+    - name: Directorio /srv/incoming
+      ansible.builtin.file:
+        path: /srv/incoming
+        state: directory
+        mode: "0755"
+
+    - name: Fichero de prueba en incoming
+      ansible.builtin.file:
+        path: /srv/incoming/readme.txt
+        state: touch
+        mode: "0644"
+
+    - name: Regla fcontext para /srv/tools
+      community.general.sefcontext:
+        target: "/srv/tools(/.*)?"
+        setype: public_content_t
+        state: present
+
+    - name: Regla fcontext para /srv/incoming
+      community.general.sefcontext:
+        target: "/srv/incoming(/.*)?"
+        setype: public_content_rw_t
+        state: present
+
+    - name: Relabelado de ambos arboles
+      ansible.builtin.command:
+        cmd: restorecon -Rv /srv/tools /srv/incoming
+      changed_when: true

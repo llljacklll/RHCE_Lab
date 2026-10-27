@@ -172,3 +172,64 @@ tasks:
         type: block_rescue
         name: tree
         path: /tmp/block_ok
+
+  # ================= TASK PACK #3 =================
+  # Volumen y variedad del banco: mas piezas basicas (paquete/grupo),
+  # un combo paquete+servicio nuevo, un cron adicional y un
+  # selinux_fcontext multiparte (dos reglas en una tarea). Todo con
+  # checkers existentes: package, group, user, service, cron y
+  # selinux_fcontext. Nombres/GIDs/UIDs/rutas nuevos para no pisar
+  # ninguna tarea previa (regla de combinabilidad del pool).
+  - id: rand_pkg_nfsutils
+    difficulty: easy
+    description: "Instalar los utilitarios de cliente NFS (nfs-utils)"
+    checks:
+      - type: package
+        name: nfs-utils
+  - id: rand_group_qa
+    difficulty: easy
+    description: "Crear el grupo 'qa' con GID 3100"
+    checks:
+      - type: group
+        name: qa
+        path: "3100"
+  - id: med_user_dbadmin
+    difficulty: medium
+    description: "Crear el usuario 'dbadmin' con UID 2700"
+    checks:
+      - type: user
+        name: dbadmin
+        path: "2700"
+  - id: med_pkg_svc_samba
+    difficulty: medium
+    description: "Instalar samba y dejar el servicio smb activo"
+    checks:
+      - type: package
+        name: samba
+      - type: service
+        name: smb
+  - id: hard_cron_purge
+    difficulty: hard
+    description: "Programar cron para root que ejecute '/usr/local/bin/purge.sh'"
+    checks:
+      - type: cron
+        name: "/usr/local/bin/purge.sh"
+        path: root
+  - id: hard_fcontext_multi
+    difficulty: hard
+    description: >-
+      SELinux: crea los directorios /srv/tools y /srv/incoming con un
+      fichero dentro de cada uno. Anade las reglas de contexto para que
+      /srv/tools y su contenido queden etiquetados como public_content_t
+      (spec /srv/tools(/.*)?) y /srv/incoming y su contenido como
+      public_content_rw_t (spec /srv/incoming(/.*)?), aplicando
+      restorecon despues en ambos arboles.
+    checks:
+      - task_id: hard_fcontext_multi
+        type: selinux_fcontext
+        name: public_content_t
+        path: "/srv/tools(/.*)?"
+      - task_id: hard_fcontext_multi
+        type: selinux_fcontext
+        name: public_content_rw_t
+        path: "/srv/incoming(/.*)?"
