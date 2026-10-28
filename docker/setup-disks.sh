@@ -46,6 +46,23 @@ echo "fake-disk: ${HOSTNAME} -> $D0 $D1"
 
 # imagenes 1G y attach SOLO a los propios
 truncate -s 1G "$DISK_DIR/disk1.img" "$DISK_DIR/disk2.img"
+
+# DM fantasma: los device-mapper son GLOBALES y sobreviven
+# al recreate del contenedor. Un LV activo de la generacion
+# anterior retiene MI loop: losetup -d y el attach acaban en
+# EBUSY y set -e mata el servicio (asi murio node1/node2 en
+# el up de las 15:58). Solo toco los dm cuyo slave DIRECTO
+# es uno de mis loops: jamas toco los dm de otros nodos.
+for d in "$D0" "$D1"; do
+    for dm in /sys/block/dm-*; do
+        [ -e "$dm/slaves/${d#/dev/}" ] || continue
+        base=${dm#/sys/block/}
+        majmin=$(cat "$dm/dev")
+        [ -e "/dev/$base" ] || mknod "/dev/$base" b \
+            "${majmin%:*}" "${majmin#*:}" 2>/dev/null || true
+        dmsetup remove -f "/dev/$base" 2>/dev/null || true
+    done
+done
 losetup -d "$D0" 2>/dev/null || true
 losetup -d "$D1" 2>/dev/null || true
 if ! losetup "$D0" "$DISK_DIR/disk1.img" 2>/dev/null; then
