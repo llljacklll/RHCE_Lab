@@ -6,7 +6,7 @@
 #  core/) y despacha la acción pedida (up, run, exam, grade...) a la
 #  función que la implementa en core/*.sh. Aquí NO vive lógica de negocio:
 #    [1] preflight de dependencias (auto-reparable)
-#    [2] secreto local .vault_pass si falta   [3] carga de módulos (source x10)
+#    [2] secreto local .vault_pass si falta   [3] carga de módulos (source x11)
 #    [4] estado global del router             [5] ayuda (print_help)
 #    [6] parser de argumentos                 [7] dispatch final
 #
@@ -22,6 +22,7 @@
 #    core/grade.sh ........ 'grade': corrección + anti-trampas (cronómetro)
 #    core/test.sh ......... 'test': batería de humo automática
 #    core/wait.sh ........ 'wait': esperar SSH de nodos (control)
+#    core/gate.sh ........ 'gate': gate de transporte locale-proof
 #    webui/webui.py ....... 'web': consola web del simulacro (LOTE 26)
 #
 #  USO: ./lab.sh <acción> [opciones]  (sin argumentos = menú de ayuda)
@@ -80,6 +81,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/core/exam.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/grade.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/test.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/wait.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/core/gate.sh"
 
 # ----------------------------------------------------------------------------
 # [4] ESTADO GLOBAL del router
@@ -93,6 +95,7 @@ ACTION=""
 DNS_CONFIG="$DEFAULT_DNS"
 PLAYBOOK_FILE=""
 EXAM_ARGS=""
+GATE_ARGS=""
 VAULT_MODE=false
 NOWEB=0
 # LOTE 32-B: dir absoluto del repo, capturado antes de cualquier cd
@@ -117,6 +120,7 @@ function print_help() {
     echo "  doctor      Chequeo rápido: docker, contenedores, discos y filtro LVM"
     echo "  autostart   Instalar el autoarranque del lab con la MV (systemd)"
     echo "  wait        Esperar a que SSH este listo en nodos"
+    echo "  gate <arch>   Gate de transporte (bash -n, ASCII, col)"
     echo ""
     echo "Modo Examen:"
     echo "  exam                  Mostrar menú de ayuda de exámenes"
@@ -177,6 +181,14 @@ while [[ "$#" -gt 0 ]]; do
         wait)
             ACTION="wait"
             shift
+            ;;
+        gate)
+            # Como exam: toma el resto (rutas) y rompe el bucle.
+            # re-split en el dispatch es intencional.
+            ACTION="gate"
+            shift
+            GATE_ARGS="$*"
+            break
             ;;
         -h|--help) print_help ;;
         up|down|start|stop|reset|shell|test|doctor|autostart|web|web-start|web-stop)
@@ -309,6 +321,7 @@ case "$ACTION" in
     grade) lab_grade ;;
     test)  print_banner; lab_test ;;
     wait)  lab_wait ;;
+    gate)  lab_gate $GATE_ARGS ;;
     *)
         # Solo opciones globales sin acción (ej: './lab.sh --dns 1.1.1.1').
         echo -e "${RED}Error: Falta la acción principal.${NC}"
