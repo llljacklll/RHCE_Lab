@@ -63,5 +63,8 @@
         path: /mnt/datos                      # el módulo lo crea si no existe
         src: "/dev/{{ vg_nombre }}/lv_data"
         fstype: ext4
-        opts: defaults                        # rw,suid,dev,exec,auto,...
+        # nofail: evita que un arranque sin el disco
+        # del LV caiga en emergency mode (en el lab los
+        # discos nacen limpios en cada boot del nodo).
+        opts: defaults,nofail,x-systemd.device-timeout=5                        # rw,suid,dev,exec,auto,...
         state: mounted                        # fstab + montado ahora
