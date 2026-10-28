@@ -66,5 +66,6 @@
         # nofail: evita que un arranque sin el disco
         # del LV caiga en emergency mode (en el lab los
         # discos nacen limpios en cada boot del nodo).
-        opts: defaults,nofail,x-systemd.device-timeout=5                        # rw,suid,dev,exec,auto,...
+        # rw,suid,dev,exec,auto,...
+        opts: defaults,nofail,x-systemd.device-timeout=5
         state: mounted                        # fstab + montado ahora
