@@ -21,6 +21,7 @@
 #    core/exam.sh ......... 'exam': generar/presentar/iniciar examen
 #    core/grade.sh ........ 'grade': corrección + anti-trampas (cronómetro)
 #    core/test.sh ......... 'test': batería de humo automática
+#    core/wait.sh ........ 'wait': esperar SSH de nodos (control)
 #    webui/webui.py ....... 'web': consola web del simulacro (LOTE 26)
 #
 #  USO: ./lab.sh <acción> [opciones]  (sin argumentos = menú de ayuda)
@@ -78,6 +79,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/core/exam_random.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/exam.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/grade.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/core/test.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/core/wait.sh"
 
 # ----------------------------------------------------------------------------
 # [4] ESTADO GLOBAL del router
@@ -114,6 +116,7 @@ function print_help() {
     echo "  run      Ejecutar un playbook (ej: $0 run site.yml)"
     echo "  doctor      Chequeo rápido: docker, contenedores, discos y filtro LVM"
     echo "  autostart   Instalar el autoarranque del lab con la MV (systemd)"
+    echo "  wait        Esperar a que SSH este listo en nodos"
     echo ""
     echo "Modo Examen:"
     echo "  exam                  Mostrar menú de ayuda de exámenes"
@@ -169,6 +172,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --no-web)
             NOWEB=1
+            shift
+            ;;
+        wait)
+            ACTION="wait"
             shift
             ;;
         -h|--help) print_help ;;
@@ -301,6 +308,7 @@ case "$ACTION" in
     exam)  lab_exam $EXAM_ARGS ;;
     grade) lab_grade ;;
     test)  print_banner; lab_test ;;
+    wait)  lab_wait ;;
     *)
         # Solo opciones globales sin acción (ej: './lab.sh --dns 1.1.1.1').
         echo -e "${RED}Error: Falta la acción principal.${NC}"
