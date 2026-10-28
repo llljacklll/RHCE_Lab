@@ -69,7 +69,7 @@ limpia_dms() {
         done
     done
 }
-suela_loops() {
+suelta_loops() {
     losetup -d "$D0" 2>/dev/null || true
     losetup -d "$D1" 2>/dev/null || true
 }
