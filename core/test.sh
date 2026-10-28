@@ -10,7 +10,8 @@
 #    intenciones. Si las 5 fases pasan, el entorno puede
 #    sostener un examen completo de verdad.
 #
-#  LAS 5 FASES (cada una depende de la anterior):
+#  LAS 6 FASES (0 = codigo del lab; 1-5 dependen en cadena):
+#    Fase 0 -> Codigo del propio lab (bash -n arbol + gate IaC)
 #    Fase 1 -> Infraestructura y Sistema Operativo
 #              (systemd como PID 1, sshd activo, firewalld)
 #    Fase 2 -> Conectividad y Seguridad
@@ -77,6 +78,33 @@ function lab_test() {
     # El laboratorio debe estar levantado: si no, cada docker
     # exec fallará en cadena y las 5 fases harían ruido sin
     # valor diagnóstico.
+    # FASE 0 :: Codigo del propio lab (fail-fast, sin docker).
+    # bash -n en lab.sh + core/ + checkers/; gate de transporte
+    # solo en los ficheros IaC (ASCII/80 col es SU puerta).
+    echo -e "\n${YELLOW}[+] Fase 0: Codigo del propio lab${NC}"
+    local f bad="" gout grc n=0
+    for f in "$PROJECT_DIR"/lab.sh "$PROJECT_DIR"/core/*.sh \
+             "$PROJECT_DIR"/core/checkers/*.sh; do
+        n=$((n+1))
+        bash -n "$f" 2>/dev/null || bad="$bad $f"
+    done
+    if [ -z "$bad" ]; then
+        echo -e "  [${GREEN}PASS${NC}] bash -n OK ($n ficheros)"
+        ((PASS_COUNT++))
+    else
+        echo -e "  [${RED}FAIL${NC}] bash -n falla en:$bad"
+        ((FAIL_COUNT++))
+    fi
+    gout=$(lab_gate "$PROJECT_DIR/core/wait.sh" \
+                    "$PROJECT_DIR/core/gate.sh" 2>&1); grc=$?
+    if [ "$grc" -eq 0 ]; then
+        echo -e "  [${GREEN}PASS${NC}] Gate IaC: wait.sh + gate.sh"
+        ((PASS_COUNT++))
+    else
+        echo -e "  [${RED}FAIL${NC}] Gate IaC:"; echo "$gout"
+        ((FAIL_COUNT++))
+    fi
+
     require_control_running
 
     echo -e "${CYAN}========================================${NC}"
