@@ -100,11 +100,13 @@ _dev_in_node() {
     docker exec "$1" test -b "/dev/$2" 2>/dev/null
 }
 
-# _loop_on_host: ¿existe el loop en el HOST? /sys/block
-# solo lista los dispositivos adjuntados al kernel: más
-# barato y estable que parsear 'losetup -a'.
+# _loop_on_host: verdadero solo si el loop está ADJUNTADO
+# en el host. OJO: /sys/block/loopN existe aunque el loop
+# esté sin usar (esqueleto del módulo loop); lo que
+# delata un attach real es loop/backing_file. Sigue
+# siendo sysfs: más barato que parsear 'losetup -a'.
 _loop_on_host() {
-    [ -e "/sys/block/$1" ]
+    [ -f "/sys/block/$1/loop/backing_file" ]
 }
 
 # _loop_wait: espera hasta 10 s a que el host tenga el loop
@@ -311,9 +313,12 @@ lab_disks_finalize() {
             # si el loop no aparece, el || true deja que la
             # reparación de abajo intente adjuntarlo.
             _loop_wait "$dev" || true
-            if ! _dev_in_node "$node" "$dev"; then
-                # El nodo no ve el disco. Primero asegurar
-                # de que el HOST lo tiene adjuntado.
+            if ! _dev_in_node "$node" "$dev" \
+               || ! _loop_on_host "$dev"; then
+                # Reparar si el nodo no ve el disco O el
+                # host no tiene el loop adjuntado: con un
+                # /dev/loopN estático el test -b miente, y
+                # la mitad que manda es el attach del host.
                 if ! _loop_on_host "$dev"; then
                     mkdir -p "$DISK_IMG_DIR"
                     # imagen sparse de 1G si no existe
