@@ -296,7 +296,7 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
 - [x] Tareas de Block/Rescue en el task pool
 - [x] Checker fino de SELinux (fcontext real)
 - [x] Consola web del simulacro (generación, cronómetro, terminal y corrección)
-- [ ] Más exámenes estáticos
+- [x] Más exámenes estáticos (exam_004, exam_005 y exam_006 - LOTE 37)
 
 ## Licencia
 

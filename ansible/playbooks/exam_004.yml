@@ -1,0 +1,39 @@
+# ============================================================
+#  SOLUCIÓN DE REFERENCIA — EXAMEN 004 (DIFICULTAD: EASY)
+#  Título: "Grupos, Directorios y Permisos"
+# ------------------------------------------------------------
+#    task_1 → grupo devops (group)
+#    task_2 → usuario devops1 (user)
+#    task_3 → /srv/devops con setgid 2770 (permissions)
+#    task_4 → /srv/devops/plan.txt: 'sprint' + 640 (file+permissions)
+# ============================================================
+
+---
+- name: "EXAM 004 :: Grupos, Directorios y Permisos (solución de referencia)"
+  hosts: nodes
+  become: true
+
+  tasks:
+
+    - name: "task_1 | Crear el grupo devops"
+      ansible.builtin.group:
+        name: devops
+        state: present
+
+    - name: "task_2 | Crear el usuario devops1 con shell bash"
+      ansible.builtin.user:
+        name: devops1
+        shell: /bin/bash
+        state: present
+
+    - name: "task_3 | Directorio /srv/devops con setgid"
+      ansible.builtin.file:
+        path: /srv/devops
+        state: directory
+        mode: "2770"
+
+    - name: "task_4 | Fichero plan.txt con contenido y permisos 640"
+      ansible.builtin.copy:
+        content: "plan sprint 2026\n"
+        dest: /srv/devops/plan.txt
+        mode: "0640"

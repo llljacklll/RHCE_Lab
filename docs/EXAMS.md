@@ -44,7 +44,7 @@ Estados del examen (`state/exam_status.yml`):
 
 ## Exámenes estáticos
 
-Los tres exámenes fijos de `scenarios/`, pensados para calibrar el
+Los seis exámenes fijos de `scenarios/`, pensados para calibrar el
 laboratorio de punta a punta (sus soluciones de referencia son los
 `ansible/playbooks/exam_00X.yml`):
 
@@ -53,6 +53,9 @@ laboratorio de punta a punta (sus soluciones de referencia son los
 | `easy/exam_001.yml` | 3 | 3/3 APROBADO | Paquetes/usuarios/servicios básicos |
 | `medium/exam_002.yml` | 2 | 2/2 APROBADO | Roles + plantillas Jinja2 |
 | `hard/exam_003.yml` | 5 | 5/5 APROBADO | Vault + LVM multi-nodo (necesita `--vault`) |
+| `easy/exam_004.yml` | 4 | 5/5 APROBADO | Grupos, setgid y permisos |
+| `medium/exam_005.yml` | 4 | 4/4 APROBADO | vsftpd + SELinux fcontext persistente |
+| `hard/exam_006.yml` | 5 | 6/6 APROBADO | block/rescue + cron + storage compartido |
 
 ```bash
 ./lab.sh exam easy/exam_001.yml     # cargar (arranca cronometro)

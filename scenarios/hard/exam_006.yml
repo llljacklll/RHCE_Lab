@@ -1,0 +1,66 @@
+# ============================================================
+#  SCENARIOS/HARD/EXAM_006.YML — Examen fijo (HARD):
+#  "Resiliencia, Cron y Storage Compartido"
+# ------------------------------------------------------------
+#  QUÉ EVALÚA: grupo con GID exacto (group), directorio setgid
+#  (permissions), el patrón block/rescue/always con entregable
+#  en el nodo control (block_rescue), cron de root (cron) y
+#  contenido+permisos de fichero (file/permissions).
+#  Sin LVM ni Vault a propósito: no pisa device-mapper (regla
+#  global del kernel) y no exige --vault en la batería.
+# ============================================================
+
+---
+id: exam_006
+difficulty: hard
+title: "Resiliencia, Cron y Storage Compartido"
+time_limit: 45
+
+tasks:
+
+  - id: task_1
+    description: "Crear el grupo 'proyecto' con GID 3500 en todos los nodos"
+
+  - id: task_2
+    description: "Crear el directorio /srv/proyecto asignado al grupo 'proyecto' y con permisos 2770 (setgid) en todos los nodos"
+
+  - id: task_3
+    description: "En el nodo de control, crear el playbook /home/ansible/block_rescue.yml con: block que intenta instalar el paquete 'paquete-fantasma-xyz' (no existe), rescue que instala 'tree', y always que crea el fichero /tmp/block_rescue_ok; ejecútalo contra los nodos"
+
+  - id: task_4
+    description: "Programar en el crontab de root de todos los nodos la ejecución de 'logger RespaldoDiario' cada 10 minutos"
+
+  - id: task_5
+    description: "Crear el fichero /srv/proyecto/leeme.txt que contenga la palabra 'proyecto' y con permisos 640"
+
+checks:
+
+  - task_id: task_1
+    type: group
+    name: proyecto
+    path: "3500"
+
+  - task_id: task_2
+    type: permissions
+    name: "2770"
+    path: /srv/proyecto
+
+  - task_id: task_3
+    type: block_rescue
+    name: tree
+    path: /tmp/block_rescue_ok
+
+  - task_id: task_4
+    type: cron
+    name: "logger RespaldoDiario"
+    path: root
+
+  - task_id: task_5
+    type: file
+    name: proyecto
+    path: /srv/proyecto/leeme.txt
+
+  - task_id: task_5
+    type: permissions
+    name: "640"
+    path: /srv/proyecto/leeme.txt

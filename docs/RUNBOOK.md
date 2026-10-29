@@ -31,5 +31,5 @@ Nada vive fuera de git: lo que importa se commitea o se .gitignora.
 ## Marcador de lectura contra nodos virgenes
 - Bateria: 12/12 + banner con la versión del tag (hoy v1.4.2).
 - Examenes: se ESPERAN 0/N, cada FAIL con su razon legible.
-- Los tres examenes fijos pueden salir aprobados tras la bateria (Fase 5 fuerza sus soluciones: huella legitima).
+- Los seis examenes fijos pueden salir aprobados tras la bateria (Fase 5 fuerza sus soluciones: huella legitima).
 - Todo PASS sin huella conocida es sospechoso. Alarmas reales: crash, FAIL mudo, PASS fantasma.

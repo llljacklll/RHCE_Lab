@@ -1,0 +1,51 @@
+# ============================================================
+#  SCENARIOS/MEDIUM/EXAM_005.YML — Examen fijo (MEDIUM):
+#  "SELinux Persistente y Servicios"
+# ------------------------------------------------------------
+#  QUÉ EVALÚA: paquete + servicio (package/service), despliegue
+#  de contenido web (file) y el contexto SELinux PERSISTENTE
+#  con semanage fcontext (selinux_fcontext). El checker valida
+#  a nivel de POLICY (semanage -l + matchpathcon), así que la
+#  tarea exige instalar policycoreutils-python-utils, crear la
+#  regla y aplicarla con restorecon.
+# ============================================================
+
+---
+id: exam_005
+difficulty: medium
+title: "SELinux Persistente y Servicios"
+time_limit: 30
+
+tasks:
+
+  - id: task_1
+    description: "Instalar el servidor FTP 'vsftpd' en todos los nodos"
+
+  - id: task_2
+    description: "Habilitar y arrancar el servicio vsftpd"
+
+  - id: task_3
+    description: "Crear el directorio /webdata y dentro el fichero index.html que contenga la palabra 'bienvenido'"
+
+  - id: task_4
+    description: "Dar al directorio /webdata y TODO su contenido el tipo SELinux 'httpd_sys_content_t' de forma PERSISTENTE: instala policycoreutils-python-utils, crea la regla con semanage fcontext usando la expresión '/webdata(/.*)?' y aplícala con restorecon"
+
+checks:
+
+  - task_id: task_1
+    type: package
+    name: vsftpd
+
+  - task_id: task_2
+    type: service
+    name: vsftpd
+
+  - task_id: task_3
+    type: file
+    name: bienvenido
+    path: /webdata/index.html
+
+  - task_id: task_4
+    type: selinux_fcontext
+    name: httpd_sys_content_t
+    path: "/webdata(/.*)?"

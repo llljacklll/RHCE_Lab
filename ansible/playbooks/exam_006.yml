@@ -1,0 +1,98 @@
+# ============================================================
+#  SOLUCIÓN DE REFERENCIA — EXAMEN 006 (DIFICULTAD: HARD)
+#  Título: "Resiliencia, Cron y Storage Compartido"
+# ------------------------------------------------------------
+#    task_1 → grupo proyecto con GID 3500 (group)
+#    task_2 → /srv/proyecto setgid 2770 (permissions)
+#    task_3 → entregable /home/ansible/block_rescue.yml en el
+#             control (block_rescue): lo publica el play de
+#             localhost, y los outcomes (tree + marcador) los
+#             dejan las tareas de nodo — hermético para la
+#             batería, que no ejecuta el playbook entregable.
+#    task_4 → cron de root 'logger RespaldoDiario' */10 (cron)
+#    task_5 → /srv/proyecto/leeme.txt 'proyecto' + 640 (file+perm)
+# ============================================================
+
+---
+- name: "EXAM 006 :: entregable block/rescue en el control"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+
+    - name: "task_3 | Asegurar /home/ansible"
+      ansible.builtin.file:
+        path: /home/ansible
+        state: directory
+        mode: "0755"
+
+    - name: "task_3 | Publicar /home/ansible/block_rescue.yml"
+      ansible.builtin.copy:
+        dest: /home/ansible/block_rescue.yml
+        mode: "0644"
+        content: |
+          ---
+          - name: "block/rescue/always :: plan B"
+            hosts: nodes
+            become: true
+            tasks:
+              - name: "block | intentar instalar un paquete inexistente"
+                block:
+                  - name: "instalar paquete-fantasma-xyz"
+                    ansible.builtin.dnf:
+                      name: paquete-fantasma-xyz
+                      state: present
+                rescue:
+                  - name: "rescue | instalar tree"
+                    ansible.builtin.dnf:
+                      name: tree
+                      state: present
+                always:
+                  - name: "always | crear el marcador"
+                    ansible.builtin.copy:
+                      content: "block/rescue ok\n"
+                      dest: /tmp/block_rescue_ok
+
+- name: "EXAM 006 :: nodos (solución de referencia)"
+  hosts: nodes
+  become: true
+
+  tasks:
+
+    - name: "task_1 | Grupo proyecto con GID 3500"
+      ansible.builtin.group:
+        name: proyecto
+        gid: 3500
+        state: present
+
+    - name: "task_2 | Directorio /srv/proyecto setgid"
+      ansible.builtin.file:
+        path: /srv/proyecto
+        state: directory
+        group: proyecto
+        mode: "2770"
+
+    - name: "task_3 | Outcome del rescue: tree instalado"
+      ansible.builtin.dnf:
+        name: tree
+        state: present
+
+    - name: "task_3 | Outcome del always: marcador"
+      ansible.builtin.copy:
+        content: "block/rescue ok\n"
+        dest: /tmp/block_rescue_ok
+        mode: "0644"
+
+    - name: "task_4 | Cron de root cada 10 minutos"
+      ansible.builtin.cron:
+        name: "respaldo diario"
+        user: root
+        minute: "*/10"
+        job: "logger RespaldoDiario"
+
+    - name: "task_5 | leeme.txt con contenido y permisos 640"
+      ansible.builtin.copy:
+        content: "manual del proyecto\n"
+        dest: /srv/proyecto/leeme.txt
+        mode: "0640"

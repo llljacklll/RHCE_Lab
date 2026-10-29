@@ -18,7 +18,7 @@
 #              (inventario cargado, SSH sin contraseña)
 #    Fase 3 -> Motor de Automatización (Ansible Core 2.16)
 #    Fase 4 -> Ejecución real de site.yml contra los nodos
-#    Fase 5 -> Motor de exámenes: los 3 fijos (carga -> resuelve -> corrige)
+#    Fase 5 -> Motor de exámenes: los 6 fijos (carga -> resuelve -> corrige)
 #
 #  CONTRATO DE SALIDA (importante para CI):
 #    Sale con código 0 si TODO pasa, 1 si algo falla (útil
@@ -240,7 +240,7 @@ function lab_test() {
     echo -e "\n${YELLOW}[+] Fase 5: Motor de Exámenes${NC}"
 
     local spec ex_id rest ex_diff ex_total pb_out grade_out
-    for spec in "exam_001:easy:3/3" "exam_002:medium:2/2" "exam_003:hard:5/5"; do
+    for spec in "exam_001:easy:3/3" "exam_002:medium:2/2" "exam_003:hard:5/5" "exam_004:easy:5/5" "exam_005:medium:4/4" "exam_006:hard:6/6"; do
         ex_id="${spec%%:*}";  rest="${spec#*:}"
         ex_diff="${rest%%:*}"; ex_total="${rest##*:}"
 

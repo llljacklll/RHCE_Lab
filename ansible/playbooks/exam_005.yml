@@ -1,0 +1,57 @@
+# ============================================================
+#  SOLUCIÓN DE REFERENCIA — EXAMEN 005 (DIFICULTAD: MEDIUM)
+#  Título: "SELinux Persistente y Servicios"
+# ------------------------------------------------------------
+#    task_1 → instalar vsftpd (package)
+#    task_2 → habilitar y arrancar vsftpd (service)
+#    task_3 → /webdata/index.html con 'bienvenido' (file)
+#    task_4 → fcontext persistente (selinux_fcontext):
+#             policycoreutils-python-utils + semanage + restorecon
+#
+#  IDEMPOTENCIA (crítica: la batería corre cada solución 2 veces):
+#    semanage fcontext -a FALLA si la regla ya existe, así que
+#    se guarda con: si ya está en la lista local (-C), no-op.
+# ============================================================
+
+---
+- name: "EXAM 005 :: SELinux Persistente y Servicios (solución de referencia)"
+  hosts: nodes
+  become: true
+
+  tasks:
+
+    - name: "task_1 | Instalar vsftpd"
+      ansible.builtin.dnf:
+        name: vsftpd
+        state: present
+
+    - name: "task_2 | Habilitar y arrancar vsftpd"
+      ansible.builtin.service:
+        name: vsftpd
+        state: started
+        enabled: true
+
+    - name: "task_3 | Directorio /webdata"
+      ansible.builtin.file:
+        path: /webdata
+        state: directory
+        mode: "0755"
+
+    - name: "task_3 | index.html con contenido"
+      ansible.builtin.copy:
+        content: "bienvenido al nodo\n"
+        dest: /webdata/index.html
+        mode: "0644"
+
+    - name: "task_4 | Herramientas SELinux (semanage/restorecon)"
+      ansible.builtin.dnf:
+        name: policycoreutils-python-utils
+        state: present
+
+    - name: "task_4 | Regla fcontext persistente (idempotente)"
+      ansible.builtin.shell: semanage fcontext -C -l | grep -q '/webdata' || semanage fcontext -a -t httpd_sys_content_t '/webdata(/.*)?'
+      changed_when: false
+
+    - name: "task_4 | Aplicar el contexto a /webdata"
+      ansible.builtin.command: restorecon -Rv /webdata
+      changed_when: false

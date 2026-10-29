@@ -1,0 +1,59 @@
+# ============================================================
+#  SCENARIOS/EASY/EXAM_004.YML — Examen fijo (EASY):
+#  "Grupos, Directorios y Permisos"
+# ------------------------------------------------------------
+#  QUÉ EVALÚA: gestión de grupos (group), usuario (user),
+#  despliegue de directorios con permisos numéricos y setgid
+#  (permissions) y contenido de ficheros (file).
+#  Temas con checker propio que ningún examen fijo tocaba
+#  (LOTE 37 — ítem "Más exámenes estáticos" del Roadmap).
+#
+#  REGLA DE ORO DEL PARSER (core/grade.sh):
+#    Comentarios SIEMPRE en línea completa, nunca al final
+#    de una línea de datos.
+# ============================================================
+
+---
+id: exam_004
+difficulty: easy
+title: "Grupos, Directorios y Permisos"
+time_limit: 20
+
+tasks:
+
+  - id: task_1
+    description: "Crear el grupo 'devops' en todos los nodos"
+
+  - id: task_2
+    description: "Crear el usuario 'devops1' con shell /bin/bash en todos los nodos"
+
+  - id: task_3
+    description: "Crear el directorio /srv/devops con permisos 2770 (setgid) en todos los nodos"
+
+  - id: task_4
+    description: "Crear el fichero /srv/devops/plan.txt que contenga la palabra 'sprint' y con permisos 640"
+
+checks:
+
+  - task_id: task_1
+    type: group
+    name: devops
+
+  - task_id: task_2
+    type: user
+    name: devops1
+
+  - task_id: task_3
+    type: permissions
+    name: "2770"
+    path: /srv/devops
+
+  - task_id: task_4
+    type: file
+    name: sprint
+    path: /srv/devops/plan.txt
+
+  - task_id: task_4
+    type: permissions
+    name: "640"
+    path: /srv/devops/plan.txt
