@@ -1,0 +1,34 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_repo_docker               [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA (hueco #2 del intel): configurar en TODOS los nodos el
+#  repositorio 'docker-ce-stable' con el baseurl estable de Docker
+#  para EL10, su gpgkey y habilitado.
+#
+#  MODULO CLAVE: ansible.builtin.yum_repository — cada parametro
+#  acaba siendo una linea de /etc/yum.repos.d/<name>.repo.
+#
+#  DETALLES FINOS:
+#   - name = el ID del repo (lo que lista 'dnf repolist'), no un
+#     nombre decorativo: el checker pregunta al dnf de verdad, asi
+#     que un baseurl roto tampoco colaria.
+#   - El baseurl del repo oficial de Docker funciona tal cual en
+#     EL10 (es el mismo que usa scripts/vm_bootstrap.sh).
+#   - gpgcheck sin gpgkey rompe el makecache: siempre juntos.
+#
+#  VALIDACION: core/checkers/check_repo.sh -- repo habilitado en
+#  los 3 nodos ('dnf repolist --enabled').
+# ===========================================================================
+- name: Repositorio Docker CE en los nodos
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Repositorio docker-ce-stable
+      ansible.builtin.yum_repository:
+        name: docker-ce-stable
+        description: Docker CE Stable - $basearch
+        baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        gpgcheck: true
+        enabled: true

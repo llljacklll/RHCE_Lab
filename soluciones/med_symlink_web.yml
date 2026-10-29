@@ -1,0 +1,35 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_symlink_web               [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA: crear en todos los nodos el enlace simbolico /opt/web que
+#  apunte a /srv/webapp.
+#
+#  MODULO CLAVE: ansible.builtin.file con state: link. El examen
+#  vuelve loca a la gente aqui: dest es la ruta del ENLACE y src es
+#  a donde APUNTA. Al reves, no hay examen que lo perdone.
+#
+#  DETALLES FINOS:
+#   - El destino se crea ANTES: un enlace a un destino inexistente
+#     "funciona" pero es una trampa rota.
+#   - state: link es idempotente: si el enlace ya apunta bien, no
+#     toca nada.
+#
+#  VALIDACION: core/checkers/check_symlink.sh -- test -L + readlink
+#  (acepta destino tal cual o resuelto con readlink -f).
+# ===========================================================================
+- name: Enlace simbolico /opt/web -> /srv/webapp
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Destino del enlace
+      ansible.builtin.file:
+        path: /srv/webapp
+        state: directory
+        mode: "0755"
+
+    - name: Enlace /opt/web -> /srv/webapp
+      ansible.builtin.file:
+        src: /srv/webapp
+        dest: /opt/web
+        state: link

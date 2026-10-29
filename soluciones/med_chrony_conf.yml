@@ -1,0 +1,42 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_chrony_conf               [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA: instalar chrony en todos los nodos, apuntar /etc/chrony.conf
+#  a pool.ntp.org y dejar chronyd activo.
+#
+#  NOTA DE DISENO: este task y hard_timesync_role comparten servidor
+#  (pool.ntp.org) A PROPOSITO: el rol del sistema REESCRIBE
+#  /etc/chrony.conf entero, y asi cualquier combinacion del banco
+#  sigue resoluble (regla inviolable del pool).
+#
+#  DETALLES FINOS:
+#   - lineinfile anyade UNA linea sin pisar el resto del fichero: el
+#     enunciado tipo examen pide "anadir el servidor", no reescribir
+#     la configuracion.
+#   - 'pool X iburst' y 'server X iburst' valen ambas: el checker
+#     busca el hostname como subcadena.
+#
+#  VALIDACION: check_package chrony + check_timesync pool.ntp.org +
+#  check_service chronyd.
+# ===========================================================================
+- name: Chrony sincronizado contra pool.ntp.org
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Instalar chrony
+      ansible.builtin.dnf:
+        name: chrony
+        state: present
+
+    - name: Servidor NTP en /etc/chrony.conf
+      ansible.builtin.lineinfile:
+        path: /etc/chrony.conf
+        line: "pool pool.ntp.org iburst"
+        state: present
+
+    - name: chronyd activo y habilitado
+      ansible.builtin.service:
+        name: chronyd
+        state: started
+        enabled: true

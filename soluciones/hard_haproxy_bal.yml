@@ -1,0 +1,67 @@
+# ===========================================================================
+#  SOLUCION MODELO -- hard_haproxy_bal              [dificultad: hard]
+# ---------------------------------------------------------------------------
+#  TAREA (hueco #6 del intel, el balanceador): instalar haproxy en
+#  todos los nodos, configurar un frontend en :8080 que reparta por
+#  round-robin entre el httpd de node1, node2 y node3 (:80) y dejar
+#  el servicio activo.
+#
+#  POR QUE EN LOS TRES: el pool corre sus checks en TODOS los nodos
+#  (regla del banco), asi que cada nodo lleva el mismo haproxy. En el
+#  examen real el balanceador suele ser UN host de un grupo 'proxy' o
+#  'balancers': mismo modulo, menos hosts.
+#
+#  DETALLES FINOS:
+#   - La config es minima pero COMPLETA (global+defaults+frontend+
+#     backend): 'haproxy -c' no perdona un fichero a medias.
+#   - Sin 'daemon' en global: la unit de systemd usa -W
+#     (master-worker) y daemon + systemd se pisan.
+#   - 'check' en cada server: health check contra el httpd de los
+#     nodos (ya corre por site.yml).
+#
+#  VALIDACION: check_package haproxy + check_file "node1:80" en
+#  /etc/haproxy/haproxy.cfg + check_service haproxy.
+# ===========================================================================
+- name: Balanceador haproxy en los nodos
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Instalar haproxy
+      ansible.builtin.dnf:
+        name: haproxy
+        state: present
+
+    - name: Configuracion del balanceador
+      ansible.builtin.copy:
+        dest: /etc/haproxy/haproxy.cfg
+        mode: "0644"
+        content: |
+          global
+              log /dev/log local0
+              maxconn 2000
+              user haproxy
+              group haproxy
+
+          defaults
+              mode http
+              log global
+              timeout connect 10s
+              timeout client 1m
+              timeout server 1m
+
+          frontend fe_main
+              bind *:8080
+              default_backend be_web
+
+          backend be_web
+              balance roundrobin
+              server web1 node1:80 check
+              server web2 node2:80 check
+              server web3 node3:80 check
+
+    - name: haproxy activo y habilitado
+      ansible.builtin.service:
+        name: haproxy
+        state: started
+        enabled: true

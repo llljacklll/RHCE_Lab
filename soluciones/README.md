@@ -61,6 +61,15 @@ docker exec -u ansible control ansible-playbook /home/ansible/block_rescue.yml
 | med_file_motd | Dejar en `/etc/motd` el aviso `Acceso monitorizado` | medium | `copy` + `content` (checker `file`) |
 | hard_file_precheck | Script `/usr/local/bin/precheck.sh` con shebang y modo 750 | hard | `copy` con `content`+`mode` (`file`+`permissions`) |
 | hard_perms_setgid | Grupo `proj` + `/srv/proyectos` en modo 2770 setgid | hard | `group` + `file` con modo especial |
+| med_repo_docker | Repositorio `docker-ce-stable` en los nodos | medium | `yum_repository` (baseurl+gpgkey) |
+| med_firewall_port | Puerto `8081/tcp` permanente en zona public | medium | `firewalld` dual (demonio/offline) |
+| med_symlink_web | Enlace simbolico `/opt/web` -> `/srv/webapp` | medium | `file` con `state: link` |
+| med_galaxy_reqs | `requirements.yml` + instalar `community.crypto` | medium | `ansible-galaxy collection install` |
+| med_chrony_conf | chrony + `pool.ntp.org` en `/etc/chrony.conf` | medium | `lineinfile` + `service` |
+| med_vault_create | Vault `vault_app.yml` con `app_secret` | medium | `copy` + `ansible-vault encrypt` |
+| hard_vault_rekey | Rekey de `vault_ops.yml` a la contraseña del lab | hard | `ansible-vault rekey` |
+| hard_timesync_role | Coleccion `redhat.rhel_system_roles` + rol timesync | hard | requirements + `include_role` |
+| hard_haproxy_bal | haproxy `:8080` hacia el httpd de los 3 nodos | hard | balanceo: paquete + config + servicio |
 
 En el listado del examen ves la descripción; en `./lab.sh grade` ves el
 `task_id` de cada check — ambos te llevan al fichero.

@@ -1,0 +1,63 @@
+# ===========================================================================
+#  SOLUCION MODELO -- hard_vault_rekey              [dificultad: hard]
+# ---------------------------------------------------------------------------
+#  TAREA (pregunta #9 del intel): dejar /home/ansible/vault_ops.yml
+#  (ops_secret=RekeyEx294) cifrado con la contraseña DEL LABORATORIO
+#  partiendo de la contraseña vieja de /home/ansible/.pass_old.
+#  En el examen el vault ya viene cifrado; como el pool debe ser
+#  autocontenido, el playbook FABRICA el punto de partida y rekey-ea.
+#
+#  COMANDO CLAVE:
+#    ansible-vault rekey <fichero> --vault-password-file <vieja> \
+#        --new-vault-password-file <nueva>
+#
+#  DETALLES FINOS:
+#   - El rekey verifica la VIEJA antes de tocar nada: si no cuadra,
+#     el original queda intacto.
+#   - Los guards hacen el playbook idempotente: si el vault ya
+#     descifra con la nueva, no se rekey-ea de nuevo (fallaria).
+#   - La nueva se usa via copia local .pass_lab (mismo valor que
+#     /opt/ansible/files/.vault_pass, que 'ansible' puede no poder
+#     leer por el bind-mount).
+#
+#  VALIDACION: check_vault ops_secret vault_ops.yml -- tras el rekey
+#  descifra con la contraseña del lab y contiene la variable.
+# ===========================================================================
+- name: Rekey del vault de operaciones
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Contraseña vieja del enunciado
+      ansible.builtin.copy:
+        dest: /home/ansible/.pass_old
+        content: "OldPass2026\n"
+        mode: "0600"
+
+    - name: Copia local de la contraseña del lab
+      ansible.builtin.copy:
+        dest: /home/ansible/.pass_lab
+        content: "RhceLab2026\n"
+        mode: "0600"
+
+    - name: Fabricar el vault cifrado con la vieja (si no existe)
+      ansible.builtin.shell: |
+        if [ ! -f /home/ansible/vault_ops.yml ] || \
+           ! grep -q ANSIBLE_VAULT /home/ansible/vault_ops.yml; then
+          printf 'ops_secret: RekeyEx294\n' > /home/ansible/vault_ops.yml
+          chmod 600 /home/ansible/vault_ops.yml
+          ansible-vault encrypt /home/ansible/vault_ops.yml \
+              --vault-password-file /home/ansible/.pass_old
+        fi
+      changed_when: false
+
+    - name: Rekey a la contraseña del lab (solo si aun usa la vieja)
+      ansible.builtin.shell: |
+        if ansible-vault view /home/ansible/vault_ops.yml \
+            --vault-password-file /home/ansible/.pass_old >/dev/null 2>&1; then
+          ansible-vault rekey /home/ansible/vault_ops.yml \
+              --vault-password-file /home/ansible/.pass_old \
+              --new-vault-password-file /home/ansible/.pass_lab
+        fi
+      changed_when: false

@@ -1,0 +1,42 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_galaxy_reqs               [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA: en control, crear /home/ansible/requirements.yml declarando
+#  la coleccion community.crypto e instalarla con ansible-galaxy.
+#
+#  POR QUE IMPORTA (intel #4): en un intento real pidieron modulos de
+#  redhat.rhel_system_roles SIN regalar el .tar.gz: habia que tirar
+#  de 'ansible-galaxy collection install -r requirements.yml' de
+#  memoria. Aqui se practica el flujo completo con una coleccion
+#  ligera y sin dependencias.
+#
+#  DETALLES FINOS:
+#   - hosts: localhost + connection: local: el entregable vive en el
+#     PROPIO control; no se toca ningun nodo.
+#   - Sin become: instala en /home/ansible/.ansible/collections (el
+#     "user site" de galaxy). El checker lista tambien /root/.ansible
+#     y no discrimina: ambas instalaciones valen.
+#   - El install es idempotente: re-ejecutar dice "Nothing to do".
+#
+#  VALIDACION: core/checkers/check_galaxy.sh -- 'collection list' en
+#  control contiene community.crypto.
+# ===========================================================================
+- name: Coleccion community.crypto en control
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Declarar requirements.yml
+      ansible.builtin.copy:
+        dest: /home/ansible/requirements.yml
+        mode: "0644"
+        content: |
+          ---
+          collections:
+            - name: community.crypto
+
+    - name: Instalar la coleccion declarada
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install -r /home/ansible/requirements.yml
+      changed_when: false

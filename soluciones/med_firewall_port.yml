@@ -1,0 +1,50 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_firewall_port             [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA: abrir de forma PERMANENTE 8081/tcp en la zona public de
+#  todos los nodos.
+#
+#  DOS REALIDADES, UN PLAYBOOK:
+#   - firewalld ARRANCADO (examen real): ansible.posix.firewalld con
+#     permanent + immediate.
+#   - firewalld PARADO (modo offline historico del lab): el mismo
+#     modulo con offline: true escribe el XML permanente sin demonio
+#     (el propio site.yml del lab lo usa asi).
+#   Preguntar y elegir camino es el patron que no falla en el examen.
+#
+#  DETALLES FINOS:
+#   - permanent SIN immediate = puerto cerrado hasta reload.
+#   - 'systemctl is-active' con failed_when: false: que este parado
+#     es el DATO, no un fallo del playbook.
+#
+#  VALIDACION: core/checkers/check_firewall.sh (dual: firewall-cmd
+#  --permanent o lectura del XML de la zona).
+# ===========================================================================
+- name: Puerto 8081/tcp permanente en los nodos
+  hosts: all
+  become: true
+
+  tasks:
+    - name: ¿Demonio firewalld vivo?
+      ansible.builtin.command: systemctl is-active firewalld
+      register: fw
+      changed_when: false
+      failed_when: false
+
+    - name: Modo demonio
+      ansible.posix.firewalld:
+        port: 8081/tcp
+        zone: public
+        permanent: true
+        immediate: true
+        state: enabled
+      when: fw.stdout == "active"
+
+    - name: Modo offline
+      ansible.posix.firewalld:
+        port: 8081/tcp
+        zone: public
+        permanent: true
+        offline: true
+        state: enabled
+      when: fw.stdout != "active"

@@ -287,3 +287,74 @@ tasks:
       - type: permissions
         name: "2770"
         path: /srv/proyectos
+
+  # ---------- MEDIUM: huecos del examen real (intel EX294, LOTE 40) ----------
+  - id: med_repo_docker
+    difficulty: medium
+    description: "Configura en todos los nodos el repositorio 'docker-ce-stable' apuntando al repo estable de Docker para EL10 (centos/10), con su gpgkey y habilitado"
+    checks:
+      - type: repo
+        name: docker-ce-stable
+  - id: med_firewall_port
+    difficulty: medium
+    description: "Abre de forma PERMANENTE el puerto 8081/tcp en la zona public de todos los nodos"
+    checks:
+      - type: firewall
+        name: "8081/tcp"
+        path: public
+  - id: med_symlink_web
+    difficulty: medium
+    description: "Crea en todos los nodos el enlace simbolico /opt/web que apunte a /srv/webapp"
+    checks:
+      - type: symlink
+        name: /srv/webapp
+        path: /opt/web
+  - id: med_galaxy_reqs
+    difficulty: medium
+    description: "En control: crea /home/ansible/requirements.yml que declare la coleccion community.crypto e instalala con ansible-galaxy"
+    checks:
+      - type: galaxy
+        name: "collection:community.crypto"
+  - id: med_chrony_conf
+    difficulty: medium
+    description: "Instala chrony en todos los nodos, configura el servidor NTP pool.ntp.org en /etc/chrony.conf y deja chronyd activo"
+    checks:
+      - type: package
+        name: chrony
+      - type: timesync
+        name: pool.ntp.org
+      - type: service
+        name: chronyd
+  - id: med_vault_create
+    difficulty: medium
+    description: "En control: crea el vault /home/ansible/vault_app.yml con la variable app_secret=VaultEx294, cifrado con la contraseña del laboratorio"
+    checks:
+      - type: vault
+        name: app_secret
+        path: /home/ansible/vault_app.yml
+  - id: hard_vault_rekey
+    difficulty: hard
+    description: "En control: prepara el vault /home/ansible/vault_ops.yml (variable ops_secret=RekeyEx294) cifrandolo con la contraseña vieja de /home/ansible/.pass_old y hazle rekey a la contraseña del laboratorio"
+    checks:
+      - type: vault
+        name: ops_secret
+        path: /home/ansible/vault_ops.yml
+  - id: hard_timesync_role
+    difficulty: hard
+    description: "En control: instala la coleccion redhat.rhel_system_roles desde galaxy y aplica su rol timesync en los nodos para sincronizar contra pool.ntp.org"
+    checks:
+      - type: galaxy
+        name: "collection:redhat.rhel_system_roles"
+      - type: timesync
+        name: pool.ntp.org
+  - id: hard_haproxy_bal
+    difficulty: hard
+    description: "Instala haproxy en todos los nodos, configuralo para balancear por round-robin en el puerto 8080 hacia el httpd de node1, node2 y node3 (puerto 80) y deja el servicio activo"
+    checks:
+      - type: package
+        name: haproxy
+      - type: file
+        name: "node1:80"
+        path: /etc/haproxy/haproxy.cfg
+      - type: service
+        name: haproxy

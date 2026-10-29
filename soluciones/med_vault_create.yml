@@ -1,0 +1,46 @@
+# ===========================================================================
+#  SOLUCION MODELO -- med_vault_create              [dificultad: medium]
+# ---------------------------------------------------------------------------
+#  TAREA: en control, crear /home/ansible/vault_app.yml con
+#  app_secret=VaultEx294, CIFRADO con la contraseña del laboratorio.
+#
+#  LA CONTRASEÑA DEL LAB: vive en ansible/files/.vault_pass del repo
+#  (RhceLab2026), montada en control:/opt/ansible/files/.vault_pass.
+#  Por permisos del bind-mount, ansible-vault lanzado como 'ansible'
+#  puede no poder leerla: se copia a /home/ansible/.pass_lab (0600) y
+#  se usa esa copia. MISMA contraseña = MISMO vault: el checker (root)
+#  descifra con la original y da OK.
+#
+#  DETALLES FINOS:
+#   - Se escribe en claro y se cifra DESPUES (patron encrypt): el
+#     modulo copy no sabe cifrar.
+#   - El guard 'grep -q ANSIBLE_VAULT || encrypt' hace idempotente el
+#     paso: encrypt sobre un vault ya cifrado fallaria.
+#
+#  VALIDACION: check_vault -- cifrado + descifra con la contraseña
+#  del lab + contiene app_secret.
+# ===========================================================================
+- name: Vault con el secreto de aplicacion
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Copia local de la contraseña del lab
+      ansible.builtin.copy:
+        dest: /home/ansible/.pass_lab
+        content: "RhceLab2026\n"
+        mode: "0600"
+
+    - name: Volcar el secreto en claro
+      ansible.builtin.copy:
+        dest: /home/ansible/vault_app.yml
+        content: "app_secret: VaultEx294\n"
+        mode: "0600"
+
+    - name: Cifrar con la contraseña del lab (si no lo esta ya)
+      ansible.builtin.shell: |
+        grep -q ANSIBLE_VAULT /home/ansible/vault_app.yml || \
+        ansible-vault encrypt /home/ansible/vault_app.yml \
+            --vault-password-file /home/ansible/.pass_lab
+      changed_when: false

@@ -4,7 +4,13 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
-## [Sin publicar] — LOTE 39
+## [Sin publicar] — LOTE 40
+
+- feat(checkers): 6 plugins nuevos — repo, vault, timesync, firewall (dual), galaxy y symlink
+- feat(pool): 9 tareas nuevas alineadas con el intel EX294 (repos, galaxy/requirements, vault create/rekey, timesync config y rol real, firewall, symlink, haproxy)
+- docs: 9 soluciones comentadas + filas del mapa en soluciones/README.md
+
+## [v1.11.0] - 2026-10-29 — LOTE 39
 
 - docs: INTEL_EX294.md (intel del examen real EX294 y mapa de cobertura) y episodio_02 de la serie (roles + Jinja2)
 

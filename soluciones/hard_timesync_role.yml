@@ -1,0 +1,53 @@
+# ===========================================================================
+#  SOLUCION MODELO -- hard_timesync_role            [dificultad: hard]
+# ---------------------------------------------------------------------------
+#  TAREA (pregunta #17 del intel, tal cual): instalar la coleccion
+#  redhat.rhel_system_roles desde galaxy (requirements.yml) y aplicar
+#  su rol timesync en los nodos contra pool.ntp.org.
+#
+#  DETALLES FINOS:
+#   - FQCN del rol: redhat.rhel_system_roles.timesync (namespace +
+#     coleccion + rol, sin rutas a mano).
+#   - timesync_ntp_servers es una lista de DICCIONARIOS (hostname,
+#     iburst...), no una lista de strings.
+#   - El rol gestiona paquete + config + servicio el solito: no se
+#     toca /etc/chrony.conf a mano (y lo REESCRIBE: por eso
+#     med_chrony_conf usa el mismo servidor).
+#   - Si galaxy sirviera una version incompatible con core 2.16,
+#     fijar 'version:' en el requirements y reintentar.
+#
+#  VALIDACION: check_galaxy (coleccion en control) + check_timesync
+#  (chrony.conf de los nodos menciona pool.ntp.org).
+# ===========================================================================
+- name: Coleccion de roles del sistema en control
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Declarar requirements de roles del sistema
+      ansible.builtin.copy:
+        dest: /home/ansible/requirements_rhel_roles.yml
+        mode: "0644"
+        content: |
+          ---
+          collections:
+            - name: redhat.rhel_system_roles
+
+    - name: Instalar la coleccion desde galaxy
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install -r /home/ansible/requirements_rhel_roles.yml
+      changed_when: false
+
+- name: Timesync con el rol del sistema
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Aplicar redhat.rhel_system_roles.timesync
+      ansible.builtin.include_role:
+        name: redhat.rhel_system_roles.timesync
+      vars:
+        timesync_ntp_servers:
+          - hostname: pool.ntp.org
+            iburst: true
