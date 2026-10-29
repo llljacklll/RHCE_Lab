@@ -12,7 +12,7 @@ git clone https://github.com/llljacklll/RHCE_Lab.git
 cd RHCE_Lab
 # 3. El lab NO se auto-levanta: up es prerrequisito de test y de grades
 ./lab.sh up
-# 4. Bateria del entorno: debe dar 12/12 y ENTORNO DE LABORATORIO PERFECTO
+# 4. Bateria del entorno: debe terminar en 0 FALLIDOS y ENTORNO DE LABORATORIO PERFECTO (17/17 desde el LOTE 37)
 ./lab.sh test
 # 5. Calificar examenes (nivel + extension)
 ./lab.sh grade easy/exam_001.yml
@@ -29,7 +29,7 @@ prueba EXACTAMENTE lo que hay en origin/main.
 Nada vive fuera de git: lo que importa se commitea o se .gitignora.
 
 ## Marcador de lectura contra nodos virgenes
-- Bateria: 12/12 + banner con la versión del tag (hoy v1.4.2).
+- Bateria: 0 FALLIDOS (17/17 desde el LOTE 37) + banner con la versión del tag, leida de git describe.
 - Examenes: se ESPERAN 0/N, cada FAIL con su razon legible.
 - Los seis examenes fijos pueden salir aprobados tras la bateria (Fase 5 fuerza sus soluciones: huella legitima).
 - Todo PASS sin huella conocida es sospechoso. Alarmas reales: crash, FAIL mudo, PASS fantasma.
