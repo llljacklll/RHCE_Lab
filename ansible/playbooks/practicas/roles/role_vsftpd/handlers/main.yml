@@ -1,0 +1,13 @@
+# ============================================================
+#  ROLE: role_vsftpd — HANDLERS
+# ------------------------------------------------------------
+#  Se ejecutan UNA sola vez al final del play y SOLO si alguna
+#  tarea con 'notify' reportó un cambio de estado. El nombre
+#  debe coincidir EXACTO con el del 'notify'.
+# ============================================================
+
+---
+- name: "reiniciar vsftpd"
+  ansible.builtin.service:
+    name: vsftpd
+    state: restarted

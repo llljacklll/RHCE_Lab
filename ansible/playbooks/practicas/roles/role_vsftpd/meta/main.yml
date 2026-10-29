@@ -1,0 +1,20 @@
+# ============================================================
+#  ROLE: role_vsftpd — METADATOS (estilo ansible-galaxy)
+# ------------------------------------------------------------
+#  En el EX294 no te lo van a pedir, pero saber que existe
+#  (y que 'ansible-galaxy init' lo genera) es parte del objetivo
+#  del examen "create roles and use them in playbooks".
+# ============================================================
+
+---
+galaxy_info:
+  author: llljacklll
+  description: Rol didactico del RHCE Lab - despliega vsftpd con plantilla y handler
+  license: CC-BY-NC-SA-4.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - "10"
+
+dependencies: []

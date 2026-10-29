@@ -1,0 +1,41 @@
+# ============================================================
+#  PRÁCTICA 2 — TU PRIMER ROL COMPLETO (role_vsftpd)
+#  Nacida del feedback de la comunidad (Ivan Rivera): los ROLES
+#  son de lo que más se quiere practicar para el EX294.
+# ------------------------------------------------------------
+#  ENUNCIADO (inténtalo antes de leer esta solución):
+#
+#    1. Crea un rol llamado 'role_vsftpd' con estructura completa
+#       (defaults, tasks, handlers, templates, meta).
+#    2. El rol instala vsftpd, despliega /etc/vsftpd/vsftpd.conf
+#       desde una plantilla Jinja2 y deja el servicio arrancado
+#       y habilitado.
+#    3. El consumidor del rol fija: anonymous_enable=NO y el banner
+#       "Servidor FTP del curso RHCE".
+#    4. Ejecuta este playbook y compáralo con la práctica 1:
+#       mismo resultado, pero con código reutilizable.
+#
+#  EJECUCIÓN:
+#    ./lab.sh run practicas/practica_02_roles.yml
+# ------------------------------------------------------------
+#  PUNTO CLAVE DE PRECEDENCIA: las 'vars' del play GANAN sobre
+#  los 'defaults' del rol (la precedencia MÍNIMA de todo Ansible).
+#  Es exactamente el mecanismo que usa playbooks/exam_002.yml con
+#  el rol role_webserver.
+# ============================================================
+
+---
+- name: "PRACTICA 2 :: Consumir el rol role_vsftpd"
+  hosts: nodes
+  become: true
+
+  # Sobrescribimos los defaults del rol desde el consumidor:
+  # esta es la lección nº 1 de roles en el EX294.
+  vars:
+    vsftpd_anonymous_enable: "NO"
+    vsftpd_banner: "Servidor FTP del curso RHCE"
+
+  # Resolución del rol: Ansible busca 'roles/' ADYACENTE al
+  # playbook -> playbooks/practicas/roles/role_vsftpd
+  roles:
+    - role_vsftpd

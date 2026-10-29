@@ -1,0 +1,75 @@
+# ============================================================
+#  PRÁCTICA 1 — PAQUETES Y SERVICIOS (sin rol)
+#  Nacida del feedback de la comunidad (Ivan Rivera):
+#  "paquetes/servicios" es de lo que más se quiere practicar.
+# ------------------------------------------------------------
+#  ENUNCIADO (inténtalo antes de leer esta solución):
+#
+#    1. Instala los paquetes 'vsftpd' y 'tree' en todos los nodos.
+#    2. Configura el FTP anónimo a NO en /etc/vsftpd/vsftpd.conf
+#       (la línea empieza por 'anonymous_enable='). Si el fichero
+#       cambia, el servicio debe reiniciarse (handler).
+#    3. Garantiza el servicio vsftpd arrancado y habilitado al boot.
+#
+#  EJECUCIÓN:
+#    ./lab.sh run practicas/practica_01_paquetes_servicios.yml
+#    (2ª ejecución debe salir changed=0: idempotencia)
+#  VERIFICACIÓN MANUAL: ver README de este directorio.
+# ------------------------------------------------------------
+#  CONCEPTOS EX294: dnf con lista, lineinfile (regexp+line),
+#  notify -> handler, service (started+enabled).
+#  CHECKERS QUE MIRAN LO MISMO: check_package.sh, check_service.sh,
+#  check_file.sh (core/checkers/).
+# ============================================================
+
+---
+- name: "PRACTICA 1 :: Paquetes y servicios"
+  hosts: nodes                     # node1, node2, node3
+  become: true                     # instalar paquetes exige root
+
+  tasks:
+
+    # --------------------------------------------------------
+    # 1) Lista de paquetes en una sola tarea. dnf acepta una
+    #    lista directamente: idempotente paquete a paquete.
+    # --------------------------------------------------------
+    - name: "1 | Instalar vsftpd y tree"
+      ansible.builtin.dnf:
+        name:
+          - vsftpd
+          - tree
+        state: present
+
+    # --------------------------------------------------------
+    # 2) lineinfile: la pareja regexp+line es LA forma EX294 de
+    #    garantizar una línea de configuración. Si la línea CAMBIA
+    #    -> notify dispara el handler al final del play.
+    # --------------------------------------------------------
+    - name: "2 | FTP anónimo desactivado en vsftpd.conf"
+      ansible.builtin.lineinfile:
+        path: /etc/vsftpd/vsftpd.conf
+        regexp: '^anonymous_enable='
+        line: 'anonymous_enable=NO'
+      notify: "reiniciar vsftpd"
+
+    # --------------------------------------------------------
+    # 3) Servicio vivo ahora (started) y en el boot (enabled).
+    #    Las dos claves SIEMPRE juntas en el EX294.
+    # --------------------------------------------------------
+    - name: "3 | vsftpd arrancado y habilitado"
+      ansible.builtin.service:
+        name: vsftpd
+        state: started
+        enabled: true
+
+  # ----------------------------------------------------------
+  # HANDLERS: se ejecutan UNA sola vez, al final del play, y SOLO
+  # si alguna tarea con 'notify' reportó cambio. El nombre debe
+  # coincidir EXACTO con el del 'notify'.
+  # ----------------------------------------------------------
+  handlers:
+
+    - name: "reiniciar vsftpd"
+      ansible.builtin.service:
+        name: vsftpd
+        state: restarted

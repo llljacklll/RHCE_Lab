@@ -1,0 +1,25 @@
+# ============================================================
+#  /etc/vsftpd/vsftpd.conf — desplegado por role_vsftpd
+#  Plantilla Jinja2: las variables vienen de defaults/main.yml
+#  (o de las 'vars' del play que las sobrescriban).
+#  Base: la config por defecto del RPM en la familia RHEL, con
+#  las dos líneas gestionadas por el rol (anonymous_enable y
+#  ftpd_banner).
+# ============================================================
+
+anonymous_enable={{ vsftpd_anonymous_enable }}
+local_enable=YES
+write_enable=YES
+local_umask=022
+dirmessage_enable=YES
+xferlog_enable=YES
+connect_from_port_20=YES
+xferlog_std_format=YES
+
+# Banner del rol (visible al conectar por FTP)
+ftpd_banner={{ vsftpd_banner }}
+
+listen=NO
+listen_ipv6=YES
+pam_service_name=vsftpd
+userlist_enable=YES

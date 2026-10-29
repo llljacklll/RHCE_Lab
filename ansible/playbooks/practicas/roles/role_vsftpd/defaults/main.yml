@@ -1,0 +1,20 @@
+# ============================================================
+#  ROLE: role_vsftpd — VALORES POR DEFECTO
+# ------------------------------------------------------------
+#  'defaults' tiene la MÍNIMA precedencia de todo Ansible:
+#  cualquier play puede sobrescribirlas declarándolas en su
+#  propio bloque 'vars' (ver ../practica_02_roles.yml, y el
+#  ejemplo real de playbooks/exam_002.yml con role_webserver).
+# ============================================================
+
+---
+# Paquete FTP a instalar (permite variantes futuras)
+vsftpd_pkg: vsftpd
+
+# FTP anónimo: "YES"/"NO" ENTRE COMILLAS (sin comillas, YAML 1.1
+# los interpretaría como booleanos y la plantilla escribiría
+# 'anonymous_enable=False')
+vsftpd_anonymous_enable: "NO"
+
+# Banner que verá cualquier cliente FTP al conectar
+vsftpd_banner: "Servidor FTP gestionado por Ansible"

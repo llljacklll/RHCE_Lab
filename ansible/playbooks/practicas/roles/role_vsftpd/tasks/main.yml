@@ -1,0 +1,42 @@
+# ============================================================
+#  ROLE: role_vsftpd — TAREAS PRINCIPALES
+# ------------------------------------------------------------
+#  FLUJO (el patrón RHEL completo dentro de un rol):
+#    1. Instala el paquete
+#    2. Despliega la config (Jinja2) -> notify handler
+#    3. Arranca y habilita el servicio
+# ============================================================
+
+---
+# ------------------------------------------------------------
+# 1) Instalación del paquete (variable del rol -> defaults/main.yml)
+# ------------------------------------------------------------
+- name: "role_vsftpd :: Instalar {{ vsftpd_pkg }}"
+  ansible.builtin.dnf:
+    name: "{{ vsftpd_pkg }}"
+    state: present
+
+# ------------------------------------------------------------
+# 2) Config desde plantilla. Si CAMBIA -> handler 'reiniciar vsftpd'.
+#    'src' es relativo a templates/ del PROPIO rol: esa es la magia
+#    de la estructura de roles (todo viaja junto).
+# ------------------------------------------------------------
+- name: "role_vsftpd :: Desplegar vsftpd.conf"
+  ansible.builtin.template:
+    src: vsftpd.conf.j2
+    dest: /etc/vsftpd/vsftpd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: "reiniciar vsftpd"
+
+# ------------------------------------------------------------
+# 3) Servicio: vivo ahora y habilitado al boot. Va DESPUÉS del
+#    template y ANTES de que corra el handler, para no dejar el
+#    servicio caído si estaba parado y el handler lo rearranca.
+# ------------------------------------------------------------
+- name: "role_vsftpd :: vsftpd arrancado y habilitado"
+  ansible.builtin.service:
+    name: vsftpd
+    state: started
+    enabled: true
