@@ -153,3 +153,8 @@ notable: **ejecutar la solución DOS veces**. La segunda ha de salir con
 - [ ] `state: started` **y** `enabled: true` en el servicio
 - [ ] Segunda ejecución con `changed=0` (idempotente)
 - [ ] Corrección del motor: 3/3
+
+## 4 · Comprobación en el laboratorio
+
+Con la solución de referencia (incluida en el repo):
+

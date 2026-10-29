@@ -4,6 +4,10 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## [Sin publicar] — LOTE 39
+
+- docs: INTEL_EX294.md (intel del examen real EX294 y mapa de cobertura) y episodio_02 de la serie (roles + Jinja2)
+
 ## [1.10.0] — 2026-10-29 (LOTE 38)
 
 ### Añadido
