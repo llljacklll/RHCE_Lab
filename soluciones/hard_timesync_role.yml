@@ -13,8 +13,9 @@
 #   - El rol gestiona paquete + config + servicio el solito: no se
 #     toca /etc/chrony.conf a mano (y lo REESCRIBE: por eso
 #     med_chrony_conf usa el mismo servidor).
-#   - Si galaxy sirviera una version incompatible con core 2.16,
-#     fijar 'version:' en el requirements y reintentar.
+#   - FIX v1.12.1 en el play 1: become:false explicito +
+#     environment: PATH (secure_path de RHEL no pasa por
+#     /usr/local/bin y el CLI ansible-galaxy no se encontraba).
 #
 #  VALIDACION: check_galaxy (coleccion en control) + check_timesync
 #  (chrony.conf de los nodos menciona pool.ntp.org).
@@ -23,6 +24,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
 
   tasks:
     - name: Declarar requirements de roles del sistema
@@ -37,6 +39,8 @@
     - name: Instalar la coleccion desde galaxy
       ansible.builtin.command:
         cmd: ansible-galaxy collection install -r /home/ansible/requirements_rhel_roles.yml
+      environment:
+        PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
       changed_when: false
 
 - name: Timesync con el rol del sistema

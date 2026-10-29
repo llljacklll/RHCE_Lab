@@ -8,6 +8,8 @@ Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
 - feat(checkers): 6 plugins nuevos — repo, vault, timesync, firewall (dual), galaxy y symlink
 - feat(pool): 9 tareas nuevas alineadas con el intel EX294 (repos, galaxy/requirements, vault create/rekey, timesync config y rol real, firewall, symlink, haproxy)
+- fix(imagen): symlinks /usr/local/bin/ansible* -> /usr/bin (RUN find en Dockerfile + hot-patch live): soluciones del alumno con become no mueren por secure_path
+- fix(soluciones): PATH explicito (environment) + become:false en las 4 soluciones CLI (galaxy x2, vault x2): sudo resetea el PATH a secure_path de RHEL sin /usr/local/bin y el modulo command caia con [Errno 2] ansible-galaxy (repro en sandbox con core 2.16.19)
 - docs: 9 soluciones comentadas + filas del mapa en soluciones/README.md
 
 ## [v1.11.0] - 2026-10-29 — LOTE 39

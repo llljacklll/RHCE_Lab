@@ -16,6 +16,9 @@
 #     modulo copy no sabe cifrar.
 #   - El guard 'grep -q ANSIBLE_VAULT || encrypt' hace idempotente el
 #     paso: encrypt sobre un vault ya cifrado fallaria.
+#   - FIX v1.12.1: become:false explicito + environment: PATH en la
+#     tarea shell (el CLI ansible-vault vive junto a ansible-playbook
+#     y sudo+secure_path no lo habria encontrado).
 #
 #  VALIDACION: check_vault -- cifrado + descifra con la contraseña
 #  del lab + contiene app_secret.
@@ -24,6 +27,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
 
   tasks:
     - name: Copia local de la contraseña del lab
@@ -43,4 +47,6 @@
         grep -q ANSIBLE_VAULT /home/ansible/vault_app.yml || \
         ansible-vault encrypt /home/ansible/vault_app.yml \
             --vault-password-file /home/ansible/.pass_lab
+      environment:
+        PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
       changed_when: false

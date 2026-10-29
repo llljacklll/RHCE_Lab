@@ -19,6 +19,9 @@
 #   - La nueva se usa via copia local .pass_lab (mismo valor que
 #     /opt/ansible/files/.vault_pass, que 'ansible' puede no poder
 #     leer por el bind-mount).
+#   - FIX v1.12.1: become:false explicito + environment: PATH en las
+#     dos tareas shell (CLI ansible-vault no localizable bajo
+#     secure_path de RHEL).
 #
 #  VALIDACION: check_vault ops_secret vault_ops.yml -- tras el rekey
 #  descifra con la contraseña del lab y contiene la variable.
@@ -27,6 +30,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
 
   tasks:
     - name: Contraseña vieja del enunciado
@@ -50,6 +54,8 @@
           ansible-vault encrypt /home/ansible/vault_ops.yml \
               --vault-password-file /home/ansible/.pass_old
         fi
+      environment:
+        PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
       changed_when: false
 
     - name: Rekey a la contraseña del lab (solo si aun usa la vieja)
@@ -60,4 +66,6 @@
               --vault-password-file /home/ansible/.pass_old \
               --new-vault-password-file /home/ansible/.pass_lab
         fi
+      environment:
+        PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
       changed_when: false

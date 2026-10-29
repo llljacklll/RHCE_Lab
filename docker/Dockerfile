@@ -69,6 +69,7 @@ RUN dnf install -y \
 # ------------------------------------------------------------
 RUN pip3 install ansible-core==2.16.* \
         --break-system-packages --no-cache-dir
+RUN find /usr/local/bin -maxdepth 1 -name "ansible*" -exec ln -sft /usr/bin/ {} +
 RUN ansible-galaxy collection install -p /usr/share/ansible/collections ansible.posix:1.5.4
 RUN ansible-galaxy collection install -p /usr/share/ansible/collections community.general:7.0.0
 
