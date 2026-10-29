@@ -2,11 +2,11 @@
 #  core/disks.sh — discos de práctica: TODO automático
 # ============================================================
 #  RESPONSABILIDAD:
-#    Poseer los discos "físicos" que necesitan las tareas de
-#    almacenamiento del pool (LVM, filesystems, LUKS...):
-#    crearlos como loop devices del HOST, exponerlos en cada
-#    nodo, aislarlos por nodo, wipearlos solo en arranques
-#    fresh y liberarlos limpios al hacer 'down'.
+#    Garantizar que cada nodo tiene SUS discos para las
+#    tareas del pool (LVM, filesystems, LUKS...): el nodo
+#    crea y adjunta sus loops (fake-disks.service); el
+#    host espera, verifica, aisla por nodo (filtro LVM),
+#    wipea solo en fresh y libera al hacer down.
 #
 #  CÓMO LLEGA AQUÍ:
 #    docker.sh sourcea este fichero AL FINAL (orden
@@ -55,17 +55,9 @@
 # ============================================================
 
 # ---------- config ----------
-# Los .img viven FUERA del repo (/var/lib/...): son estado
-# de la máquina, no código, y el propio lab los recrea si
-# faltan. Cada nodo tiene SUS dos imágenes
-# (${node}-loopN.img) para que un wipe de node1 no pueda
-# tocar jamás los datos de node2.
-DISK_IMG_DIR="/var/lib/rhce-lab/disks"
-
-# 1G: de sobra para pv/vg/lv + filesystem de las tareas,
-# y lo bastante pequeño para que truncate sea instantáneo
-# (fichero sparse: no ocupa disco hasta que se escribe).
-DISK_SIZE="1G"
+# (36-F: sin imagenes de discos en el HOST. Cada nodo crea
+#  y adjunta sus propios loops via fake-disks.service; el
+#  host observa, filtra, wipea en fresh y libera en down.)
 
 # Centinela de "este arranque debe dejar los discos
 # prístinos". Lo crea docker.sh en up/reset y lo consume el
@@ -117,8 +109,8 @@ _loop_on_host() {
 # pasa el test -b aunque no haya dispositivo real detrás).
 # Devuelve el exit code de la última sonda (0 si apareció).
 _loop_wait() {
-    local dev="$1" i=0
-    while [ $i -lt 10 ] && ! _loop_on_host "$dev"; do
+    local dev="$1" i=0 max="${2:-10}"
+    while [ $i -lt "$max" ] && ! _loop_on_host "$dev"; do
         sleep 1
         i=$((i+1))
     done
@@ -285,68 +277,45 @@ _lab_wipe_node() {
 }
 
 # ============================================================
-# lab_disks_finalize — la llama _finalize_startup
+# lab_disks_finalize - la llama _finalize_startup
 # (docker.sh) en cada 'up'/'reset'. Por cada nodo arrancado:
-#   1. espera a que sus loops existan en el host,
-#   2. si el nodo no ve un /dev/loopX, lo repara: adjunta
-#      el .img (losetup) y crea el nodo de dispositivo
-#      dentro del contenedor (mknod),
+#   1. espera a que fake-disks.service adjunte sus loops,
+#   2. si queda algun hueco, relanza UNA vez la unit del
+#      propio nodo y espera con calma (30s por loop),
 #   3. instala el filtro LVM del nodo,
 #   4. si el arranque es fresh (marcador), wypea los discos.
+# UN SOLO DUENO (leccion 36-F): los loops los adjunta el
+# NODO con su mapa fijo; el host JAMAS ejecuta losetup de
+# attach. Sin segunda capa no hay carrera por los loops,
+# ni numeros robados por -f, ni .img fosiles en el host.
 # IDEMPOTENTE: puede correr dos veces seguidas sin romper
-# nada; lo destructivo está guardado tras el marcador, y
+# nada; lo destructivo esta guardado tras el marcador, y
 # el marcador se consume al final (one-shot).
 # ============================================================
 lab_disks_finalize() {
-    local node dev img
+    local node dev faltan
     echo "---- discos por nodo -----------------------"
     for node in node1 node2 node3; do
         if ! _node_up "$node"; then
             echo "  [..] $node no arrancado, salto"
             continue
         fi
+        faltan=""
         for dev in ${NODE_DISKS[$node]}; do
-            # La imagen de ESTE disco: persiste entre boots
-            # (/var/lib/rhce-lab/disks/node1-loop0.img).
-            img="$DISK_IMG_DIR/${node}-${dev}.img"
-            # Espera al attach asíncrono del arranque frío;
-            # si el loop no aparece, el || true deja que la
-            # reparación de abajo intente adjuntarlo.
             _loop_wait "$dev" || true
-            if ! _dev_in_node "$node" "$dev" \
-               || ! _loop_on_host "$dev"; then
-                # Reparar si el nodo no ve el disco O el
-                # host no tiene el loop adjuntado: con un
-                # /dev/loopN estático el test -b miente, y
-                # la mitad que manda es el attach del host.
-                if ! _loop_on_host "$dev"; then
-                    mkdir -p "$DISK_IMG_DIR"
-                    # imagen sparse de 1G si no existe
-                    [ -f "$img" ] \
-                      || truncate -s "$DISK_SIZE" "$img"
-                    # carga el módulo loop (MV minimizada)
-                    modprobe loop 2>/dev/null || true
-                    # adjunta al loop FIJO del mapa; si
-                    # está ocupado, primero libre disponible
-                    # como salida de emergencia (lab_doctor lo
-                    # reportará como desviación del mapa)
-                    losetup "/dev/$dev" "$img" 2>/dev/null \
-                        || losetup -f "$img" >/dev/null 2>&1
-                fi
-                # Segunda mitad de la reparación: crear el
-                # nodo /dev/loopX DENTRO del contenedor.
-                # major 7 = loops; minor = ${dev#loop}.
-                # El \ dentro de las comillas une las dos
-                # líneas en un solo argumento para bash -c.
-                docker exec "$node" bash -c \
-                  "[ -b /dev/$dev ] || \
-                   mknod /dev/$dev b 7 ${dev#loop}" \
-                  >/dev/null 2>&1
-            fi
-            # Doble confirmación: el nodo ve el disco Y el
-            # host tiene el loop. Solo entonces [OK]: un
-            # mknod sin loop detrás pasa el test -b pero
-            # fallaría en la primera tarea LVM.
+            _loop_on_host "$dev" || faltan="$faltan $dev"
+        done
+        if [ -n "$faltan" ]; then
+            echo "  [..] $node sin attach:$faltan -> relanzo fake-disks"
+            docker exec "$node" systemctl restart \
+                fake-disks.service >/dev/null 2>&1 || true
+            for dev in $faltan; do
+                _loop_wait "$dev" 30 || true
+            done
+        fi
+        # Verificacion honesta: el nodo ve el disco Y el
+        # kernel tiene el loop adjuntado (backing_file).
+        for dev in ${NODE_DISKS[$node]}; do
             if _dev_in_node "$node" "$dev" \
                && _loop_on_host "$dev"; then
                 echo "  [OK] $node <- /dev/$dev"
@@ -359,15 +328,15 @@ lab_disks_finalize() {
         # recrea los nodos desde cero.
         _lab_lvm_filter "$node"
         echo "  [OK] $node filtro LVM aplicado"
-        # El ÚNICO punto destructivo del fichero, y está
+        # El UNICO punto destructivo del fichero, y esta
         # guardado tras el marcador de arranque fresh.
         if [ -f "$FRESH_MARKER" ]; then
             _lab_wipe_node "$node"
         fi
     done
-    # El marcador se consume aunque algún nodo estuviera
-    # caído: el trato es "solo up/reset deja los discos
-    # prístinos", y un 'start' posterior NO wypea.
+    # El marcador se consume aunque algun nodo estuviera
+    # caido: el trato es "solo up/reset deja los discos
+    # pristinos", y un 'start' posterior NO wypea.
     rm -f "$FRESH_MARKER"
     echo "---------------------------------------------"
 }
