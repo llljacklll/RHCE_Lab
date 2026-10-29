@@ -4,7 +4,7 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
-## [Sin publicar] — LOTE 38
+## [1.10.0] — 2026-10-29 (LOTE 38)
 
 ### Añadido
 - Serie "Resolviendo el EX294": índice (`docs/SERIE_EXAMEN.md`),
@@ -15,9 +15,8 @@ Las versiones anteriores a v1.3.4 son pre-historia del repo.
   la comunidad: Ivan Rivera). Se ejecutan como los exámenes
   (`./lab.sh run practicas/...`) y NO tocan la batería.
 - Este registro de cambios (CHANGELOG.md).
-
-### Próximo en esta versión
-- README pulido para release pública, checklist de release y tag.
+- README pulido para release: badge de CI, inicio rápido de 3 comandos,
+  sección "Aprende y practica" y roadmap actualizado.
 
 ## [v1.9.0] — LOTE 37 + 36-E/36-F
 

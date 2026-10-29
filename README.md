@@ -1,5 +1,8 @@
 # RHCE Lab — Simulador del examen EX294 (Red Hat Certified Engineer)
 
+[![CI](https://github.com/llljacklll/RHCE_Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/llljacklll/RHCE_Lab/actions/workflows/ci.yml)
+[![Licencia: CC BY-NC-SA 4.0](https://img.shields.io/badge/Licencia-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
+
 Simulador completo del examen de certificación **RHCE (EX294)** basado en
 **Ansible Automation**, ejecutado 100% sobre contenedores Docker para ofrecer
 un entorno aislado, reproducible y sin riesgo para tu máquina.
@@ -9,8 +12,20 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 - Corrección automática por **plugins** (paquetes, usuarios, servicios, ficheros, LVM, cron...)
 - Generador de **exámenes aleatorios** desde un banco de tareas
 - **Consola web** (`./lab.sh web`): genera el examen, cronómetro, enunciados, terminal del nodo de control y corrección, todo desde el navegador
+- **Aprende y practica**: prácticas guiadas comentadas y una serie que resuelve los exámenes del lab paso a paso
 
----
+## Inicio rápido
+
+```bash
+git clone https://github.com/llljacklll/RHCE_Lab.git && cd RHCE_Lab
+./lab.sh up     # levantar el lab; auto-prepara el host si faltan dependencias
+./lab.sh test   # batería del motor → TODO PASS (0 FALLIDOS)
+./lab.sh web    # (opcional) consola web en http://127.0.0.1:8888
+```
+
+¿Primera instalación en una MV limpia? Ve a
+[Instalación desde cero](#instalación-desde-cero-mv-limpia-o-snapshot-revertido).
+¿Quieres practicar sin examinarte? Ve a [Aprende y practica](#aprende-y-practica).
 
 ## Características
 
@@ -24,6 +39,50 @@ un entorno aislado, reproducible y sin riesgo para tu máquina.
 | Discos LVM | Cada nodo arranca con **su propia pareja** de discos de 1GB (2GB por nodo): node1 → `/dev/loop0-1`, node2 → `/dev/loop2-3`, node3 → `/dev/loop4-5` |
 | Autoarranque total | `lab.sh` auto-prepara el host si faltan dependencias; cada contenedor monta sus discos y aplica su filtro LVM solo, al arrancar (systemd) |
 | Consola web | `./lab.sh web` sirve el panel en `127.0.0.1:8888` (acceso remoto por túnel SSH, cero firewalld): generar, cronometrar, resolver con vim y terminal real, y corregir — [docs/WEBUI.md](docs/WEBUI.md) |
+| Prácticas guiadas | Playbooks comentados en `ansible/playbooks/practicas/` (paquetes/servicios y roles): ejecución real contra los 3 nodos, sin cronómetro ni corrección |
+| Serie didáctica | [docs/SERIE_EXAMEN.md](docs/SERIE_EXAMEN.md): cada examen del lab resuelto paso a paso, con plantilla para tus propios episodios |
+
+## Aprende y practica
+
+El material de aprendizaje del LOTE 38 **no toca** la batería de exámenes ni
+el estado del lab: se ejecuta con el `run` de siempre y se corrige leyendo la
+salida de Ansible, sin cronómetro ni `grade`.
+
+### Prácticas guiadas (`ansible/playbooks/practicas/`)
+
+Playbooks comentados, pensados para leerlos **antes y después** de ejecutarlos:
+
+```bash
+./lab.sh run practicas/practica_01_paquetes_servicios.yml   # dnf + lineinfile + service + handler
+./lab.sh run practicas/practica_02_roles.yml                # rol role_vsftpd + precedencia de variables
+```
+
+- **practica_01 — paquetes y servicios**: instala `vsftpd` y `tree` con
+  `dnf`, configura el acceso anónimo con `lineinfile`, deja el servicio
+  `started + enabled` y reinicia mediante un **handler** solo cuando la
+  configuración cambió.
+- **practica_02 — roles**: lo mismo empaquetado como **rol** completo
+  (`role_vsftpd`: defaults, tasks, template y handlers) y la lección clave
+  para el examen: las `vars` del play **sobrescriben** los `defaults` del rol.
+
+Ejecuta cada una **dos veces**: la primera debe salir con `changed > 0`
+(instala, configura y dispara el handler) y la segunda con `changed=0` —
+esa es la **idempotencia**, la propiedad que define a un playbook bien
+escrito. Protocolo de 15 minutos y verificación manual de cada estado:
+[ansible/playbooks/practicas/README.md](ansible/playbooks/practicas/README.md)
+
+### Serie "Resolviendo el EX294" (`docs/serie/`)
+
+Cada episodio resuelve un examen del laboratorio como lo harías el día del
+examen: análisis del enunciado → esqueleto del playbook → solución comentada
+→ comprobación → errores típicos → variaciones.
+
+- [docs/SERIE_EXAMEN.md](docs/SERIE_EXAMEN.md) — índice de la serie y cómo usarla
+- [docs/serie/episodio_01.md](docs/serie/episodio_01.md) — exam_001 (Apache + usuarios) resuelto de principio a fin
+- [docs/serie/plantilla_episodio.md](docs/serie/plantilla_episodio.md) — plantilla de 8 secciones para tus propios episodios
+
+> **Consejo**: resuelve primero y lee después. Los `exam_00X.yml` de
+> `ansible/playbooks/` y las soluciones de la serie son spoilers.
 
 ## Prerrequisitos del host (MV Rocky / Alma / RHEL / CentOS 9-10)
 
@@ -44,6 +103,7 @@ engine + compose + pyyaml, habilita docker.service, **registra los
 imprescindibles para los discos LVM del lab) y los deja **persistentes**
 con la unidad `rhce-lab-loop.service` (sobreviven a reinicios de la MV).
 Cierra con una batería de verificaciones del host.
+
 **Desde v1.2.0 no hace falta ejecutarlo a mano:** cualquier `lab.sh`
 detecta dependencias faltantes y lo lanza automáticamente.
 
@@ -119,14 +179,6 @@ git pull --ff-only
   aplica por nodo → los checkers LVM **fallan honestos** hasta que crees la VG.
 - Si falta algo en el host (Docker, loops...), lab.sh lanza `vm_bootstrap.sh`.
 
-## Inicio rápido (host ya preparado)
-
-```bash
-./lab.sh up     # levantar (.vault_pass se crea solo si falta)
-./lab.sh test   # batería de pruebas automática
-./lab.sh web    # consola web en http://127.0.0.1:8888 (opcional)
-```
-
 ## Uso de la CLI
 
 | Comando | Descripción |
@@ -161,7 +213,10 @@ git pull --ff-only
 3. **Corregir**: `./lab.sh grade` → resultado por tareas + informe en
    `state/results/`. Si el cronómetro expiró, la corrección se bloquea.
 
-## El examen desde la web (LOTE 26-29)
+> ¿Calentamiento guiado antes de tu primer examen?
+> [Aprende y practica](#aprende-y-practica).
+
+## El examen desde la web
 
 Todo el flujo anterior se puede hacer desde el navegador:
 
@@ -256,47 +311,26 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
   se sirve local desde `webui/static/` (sin internet). El detalle
   completo en [docs/WEBUI.md](docs/WEBUI.md).
 
-## Novedades: la consola web (LOTE 26-29, post v1.4.2)
+## Historial de versiones
 
-- **webui.py**: fichero único Python stdlib (sin dependencias) con el
-  panel, la API y el frontend embebido: `./lab.sh web` lo sirve en
-  `127.0.0.1:8888`.
-- **Acceso remoto por túnel SSH** (`ssh -J`): la web escucha solo en
-  loopback y reutiliza el único puerto abierto de la MV — cero firewalld.
-- **Terminal del nodo de control** en la propia web (xterm.js servido
-  local + WebSocket RFC6455 escrito a mano sobre PTY).
-- **Examen 100% hacible desde la web**: enunciado siempre visible,
-  `[editar]` abre `vim` en el fichero de la tarea, `[mostrar solucion]`
-  en modo aprendizaje, salida del simulador dockada al terminal.
-- **UX de examen real** (LOTE 29): solución en su propia tarjeta abajo
-  del todo, toggles por tarea, botones ocultos hasta iniciar el
-  cronómetro y autoconexión del terminal.
+El detalle de cada LOTE está en [CHANGELOG.md](CHANGELOG.md) (formato
+Keep a Changelog, versionado SemVer). Versión instalada del lab:
 
-## Novedades de v1.2.0 (autoarranque total)
-
-- **DEP-GUARD**: `lab.sh` detecta dependencias del host faltantes y
-  auto-ejecuta `vm_bootstrap.sh` (probado en una MV restaurada sin Docker).
-- **Discos idempotentes por nodo** + `fake-disks.service` (systemd) y
-  `lvmlocal.conf` por nodo con filtro LVM → checkers honestos.
-- **Wipe prístino con reintentos** de los discos en cada arranque/reset.
-- **`.vault_pass` automático** en el primer uso.
-- **`./lab.sh doctor`**: chequeo rápido del lab (docker, contenedores,
-  discos por nodo y filtro LVM).
-- **`./lab.sh autostart`**: instala `rhce-lab.service` (systemd) — el lab
-  se levanta solo al arrancar la MV. Se quita con
-  `systemctl disable rhce-lab`.
-- **CI en cada push**: `bash -n`, validación de YAML, heredocs de python
-  y consistencia de checkers.
-- **Task Pack #1**: pool aleatorio renovado (14 tareas en 3 dificultades,
-  con LVM multi-nodo sin choques de dispositivo).
-- **Flujo de recuperación documentado** (restaurar MV → `pull` → `reset`).
+```bash
+git describe --tags    # p. ej. v1.10.0
+```
 
 ## Roadmap
 
 - [x] Tareas de Block/Rescue en el task pool
 - [x] Checker fino de SELinux (fcontext real)
 - [x] Consola web del simulacro (generación, cronómetro, terminal y corrección)
-- [x] Más exámenes estáticos (exam_004, exam_005 y exam_006 - LOTE 37)
+- [x] Más exámenes estáticos (exam_004, exam_005 y exam_006 — LOTE 37)
+- [x] Prácticas guiadas de paquetes/servicios y de roles (LOTE 38)
+- [x] Serie "Resolviendo el EX294" + plantilla de episodios (LOTE 38)
+- [ ] Más episodios de la serie (del exam_002 al exam_006)
+- [ ] Prácticas guiadas de cron, LVM y SELinux
+- [ ] Task Pack #2: nuevas tareas para el pool aleatorio
 
 ## Licencia
 
