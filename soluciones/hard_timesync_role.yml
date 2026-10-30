@@ -1,57 +1,153 @@
-# ===========================================================================
-#  SOLUCION MODELO -- hard_timesync_role            [dificultad: hard]
-# ---------------------------------------------------------------------------
-#  TAREA (pregunta #17 del intel, tal cual): instalar la coleccion
-#  redhat.rhel_system_roles desde galaxy (requirements.yml) y aplicar
-#  su rol timesync en los nodos contra pool.ntp.org.
-#
-#  DETALLES FINOS:
-#   - FQCN del rol: redhat.rhel_system_roles.timesync (namespace +
-#     coleccion + rol, sin rutas a mano).
-#   - timesync_ntp_servers es una lista de DICCIONARIOS (hostname,
-#     iburst...), no una lista de strings.
-#   - El rol gestiona paquete + config + servicio el solito: no se
-#     toca /etc/chrony.conf a mano (y lo REESCRIBE: por eso
-#     med_chrony_conf usa el mismo servidor).
-#   - FIX v1.12.1 en el play 1: become:false explicito +
-#     environment: PATH (secure_path de RHEL no pasa por
-#     /usr/local/bin y el CLI ansible-galaxy no se encontraba).
-#
-#  VALIDACION: check_galaxy (coleccion en control) + check_timesync
-#  (chrony.conf de los nodos menciona pool.ntp.org).
-# ===========================================================================
-- name: Coleccion de roles del sistema en control
+---
+# v1.12.2 -- coleccion vendor offline de redhat.rhel_system_roles
+# galaxy.ansible.com NO sirve esta coleccion (API v3 count=0), asi que el lab
+# construye un stub minimo (mismo FQCN + rol timesync) y lo instala type: file.
+
+- name: "Vendor de coleccion redhat.rhel_system_roles (build + install offline)"
   hosts: localhost
   connection: local
   gather_facts: false
   become: false
-
+  vars:
+    vendor_root: /tmp/ansible-vendor
+    coll_src: "{{ vendor_root }}/redhat/rhel_system_roles"
+    coll_ver: "1.22.1"
+    build_dir: "{{ vendor_root }}/build"
+    artifact: "{{ build_dir }}/redhat-rhel_system_roles-{{ coll_ver }}.tar.gz"
+  environment:
+    PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
   tasks:
-    - name: Declarar requirements de roles del sistema
+    - name: "Arbol de fuentes del vendor"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ coll_src }}/meta"
+        - "{{ coll_src }}/roles/timesync/meta"
+        - "{{ coll_src }}/roles/timesync/defaults"
+        - "{{ coll_src }}/roles/timesync/tasks"
+        - "{{ build_dir }}"
+
+    - name: "Manifiesto galaxy.yml"
       ansible.builtin.copy:
-        dest: /home/ansible/requirements_rhel_roles.yml
+        dest: "{{ coll_src }}/galaxy.yml"
+        mode: "0644"
+        content: |
+          namespace: redhat
+          name: rhel_system_roles
+          version: "{{ coll_ver }}"
+          readme: README.md
+          authors:
+            - lab
+          license:
+            - CC-BY-NC-SA-4.0
+          tags:
+            - timesync
+          repository: https://github.com/llljacklll/RHCE_Lab
+
+    - name: "README de la coleccion"
+      ansible.builtin.copy:
+        dest: "{{ coll_src }}/README.md"
+        mode: "0644"
+        content: "Stub vendor offline del lab RHCE (rol timesync)."
+
+    - name: "meta runtime de la coleccion"
+      ansible.builtin.copy:
+        dest: "{{ coll_src }}/meta/runtime.yml"
+        mode: "0644"
+        content: |
+          ---
+          requires_ansible: ">=2.14.0"
+
+    - name: "Rol timesync - meta"
+      ansible.builtin.copy:
+        dest: "{{ coll_src }}/roles/timesync/meta/main.yml"
+        mode: "0644"
+        content: |
+          ---
+          galaxy_info:
+            author: lab
+            description: stub timesync del lab RHCE
+            license: CC-BY-NC-SA-4.0
+            min_ansible_version: "2.14"
+            platforms:
+              - name: EL
+                versions:
+                  - "8"
+                  - "9"
+          dependencies: []
+
+    - name: "Rol timesync - defaults"
+      ansible.builtin.copy:
+        dest: "{{ coll_src }}/roles/timesync/defaults/main.yml"
+        mode: "0644"
+        content: |
+          ---
+          timesync_ntp_servers:
+            - pool.ntp.org
+
+    - name: "Rol timesync - tareas"
+      ansible.builtin.copy:
+        dest: "{{ coll_src }}/roles/timesync/tasks/main.yml"
+        mode: "0644"
+        content: |
+          ---
+          - name: "Instalar chrony"
+            ansible.builtin.package:
+              name: chrony
+              state: present
+
+          - name: "Limpiar servidores previos"
+            ansible.builtin.replace:
+              path: /etc/chrony.conf
+              regexp: '^\s*(server|pool)\s+.*$'
+              replace: ''
+
+          - name: "Configurar servidores NTP"
+            ansible.builtin.lineinfile:
+              path: /etc/chrony.conf
+              line: "pool {{ '{{' }} item {{ '}}' }} iburst"
+              state: present
+            loop: "{{ '{{' }} timesync_ntp_servers | default(['pool.ntp.org']) {{ '}}' }}"
+
+          - name: "chronyd activo con la nueva config"
+            ansible.builtin.systemd:
+              name: chronyd
+              state: restarted
+              enabled: true
+
+    - name: "Construir artefacto de la coleccion"
+      ansible.builtin.command:
+        cmd: "ansible-galaxy collection build {{ coll_src }} --output-path {{ build_dir }} --force"
+      register: _build
+      changed_when: true
+
+    - name: "requirements.yml del vendor"
+      ansible.builtin.copy:
+        dest: "{{ vendor_root }}/requirements.yml"
         mode: "0644"
         content: |
           ---
           collections:
-            - name: redhat.rhel_system_roles
+            - name: "{{ artifact }}"
+              type: file
 
-    - name: Instalar la coleccion desde galaxy
+    - name: "Instalar la coleccion vendor"
       ansible.builtin.command:
-        cmd: ansible-galaxy collection install -r /home/ansible/requirements_rhel_roles.yml
-      environment:
-        PATH: "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-      changed_when: false
+        cmd: "ansible-galaxy collection install -r {{ vendor_root }}/requirements.yml --force"
+      register: _install
+      changed_when: true
 
-- name: Timesync con el rol del sistema
-  hosts: all
+    - name: "Resumen install"
+      ansible.builtin.debug:
+        msg: "{{ _install.stdout_lines | default([]) | last | default('instalada') }}"
+
+- name: "Timesync en los nodos con el rol vendor"
+  hosts: node1,node2,node3
   become: true
-
-  tasks:
-    - name: Aplicar redhat.rhel_system_roles.timesync
-      ansible.builtin.include_role:
-        name: redhat.rhel_system_roles.timesync
-      vars:
-        timesync_ntp_servers:
-          - hostname: pool.ntp.org
-            iburst: true
+  vars:
+    timesync_ntp_servers:
+      - 2.almalinux.pool.ntp.org
+  roles:
+    - redhat.rhel_system_roles.timesync

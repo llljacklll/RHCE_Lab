@@ -4,7 +4,23 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
-## [Sin publicar] — LOTE 40
+## [v1.12.2] — 2026-10-30
+
+### Corregido
+- **galaxy offline**: `redhat.rhel_system_roles` no se sirve en galaxy.ansible.com (API v3 `count=0`). `hard_timesync_role` construye un stub vendor mínimo (mismo FQCN + rol `timesync`, 1.22.1) con `ansible-galaxy collection build` y lo instala vía `requirements.yml` (`type: file`) — 100% offline.
+- **exam_002 re-puertado a 8081**: forzar `http_port: 8080` choca con haproxy (0.0.0.0:8080 en los 3 nodos) y el handler de `role_webserver` dejaba httpd caído; sus checks (`package: httpd` + `index.html` con "Victor") no verifican el puerto, así que el cambio no afecta a la corrección.
+- **saneo httpd en `test`**: los restos de `Listen 8080` con httpd caído reventaban la Fase 4 de la siguiente corrida. Saneo automático antes de ejecutar `site.yml` y al cierre de `./lab.sh test`.
+- **LVM resiliente**: `setup-disks.sh` re-ejecutable revive loop devices/PV; los VG/LV del exam_003 se reconstruyen al re-forzar su solución.
+
+### Añadido
+- `core/checkers/run_check.sh`: wrapper standalone para depurar checkers fuera de `grade.sh` (replica el contrato de `_run_check`).
+## [v1.12.1] — 2026-10-29
+
+### Fixed
+
+- fix(galaxy): PATH de la CLI bajo sudo (secure_path RHEL): symlinks ansible* en imagen + environment en soluciones
+
+## [v1.12.0] — 2026-10-29
 
 - feat(checkers): 6 plugins nuevos — repo, vault, timesync, firewall (dual), galaxy y symlink
 - feat(pool): 9 tareas nuevas alineadas con el intel EX294 (repos, galaxy/requirements, vault create/rekey, timesync config y rol real, firewall, symlink, haproxy)

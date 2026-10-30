@@ -4,7 +4,7 @@
 # ------------------------------------------------------------
 #  OBJETIVO DIDÁCTICO:
 #    El alumno debe aplicar el rol 'role_webserver' sobrescribiendo
-#    sus defaults con vars de playbook (http_port=8080, owner=Victor)
+#    sus defaults con vars de playbook (http_port=8081, owner=Victor)
 #    y verificar el resultado desplegado por las plantillas.
 #    Evalúa la tríada roles → defaults/vars → plantillas Jinja2,
 #    el eje central del EX294 real.
@@ -25,7 +25,7 @@ tasks:
 
   # Tarea 1: aplicar el rol con overrides de variables
   - id: task_1
-    description: "Usando el role 'role_webserver', instalar httpd en los nodos con el puerto 8080, y definir la variable 'owner' como 'Victor'"
+    description: "Usando el role 'role_webserver', instalar httpd en los nodos con el puerto 8081, y definir la variable 'owner' como 'Victor'"
 
   # Tarea 2: la plantilla index.html.j2 debe renderizar 'Victor'
   - id: task_2

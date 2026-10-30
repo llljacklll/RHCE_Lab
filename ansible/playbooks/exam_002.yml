@@ -15,7 +15,7 @@
 # ============================================================
 
 ---
-- name: "EXAM 002 :: Aplicar role_webserver con overrides (8080 / Victor)"
+- name: "EXAM 002 :: Aplicar role_webserver con overrides (8081 / Victor)"
   hosts: nodes
   become: true
 
@@ -24,7 +24,7 @@
   # definidos en roles/role_webserver/defaults/main.yml
   # --------------------------------------------------------
   vars:
-    http_port: 8080                # Default del rol: 80    → forzamos 8080
+    http_port: 8081                # Default del rol: 80    → forzamos 8081
     owner: "Victor"                # Default del rol: Admin → forzamos Victor
 
   roles:
