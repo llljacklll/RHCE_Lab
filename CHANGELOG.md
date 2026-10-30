@@ -4,6 +4,31 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## [v1.12.3] — 2026-10-30
+
+### Fixed
+- **saneo httpd reubicado a su sitio real**: el guard de v1.12.2 acabó dentro de
+  `print_help()` en `lab.sh` (las anclas "Ejecutando / salida en vivo" no existen en
+  `lab.sh` y el fallback `site.yml` pescó la línea de la ayuda). Reubicado donde de
+  verdad se ejecuta el playbook: `core/test.sh`, dentro de `lab_test()`, justo antes
+  de la llamada a `playbooks/site.yml` (la Fase que revienta con el 8080 ocupado por
+  haproxy).
+- La entrada de v1.12.2 prometía también un saneo "al cierre de `./lab.sh test`":
+  esa segunda colocación nunca existió y se retira la promesa. El saneo pre-site.yml
+  es idempotente y cubre el caso real (veneno `Listen 8080` residual).
+
+### Notas
+- **check_repo: sin bug**. El FAIL del smoke de v1.12.2 fue un uso incorrecto de la
+  firma standalone del wrapper: `$1` es el NODO (`run_check.sh repo node1
+  docker-ce-stable` devuelve OK), no el task_id. El contrato con grade.sh
+  ($1=nodo, $2=name, $3=path) es correcto.
+- Lección de gates: el wrapper standalone devuelve rc=0 aunque el checker falle;
+  la validación SIEMPRE por la primera palabra del mensaje (OK/FAIL).
+- El gate E2E de este release cazó además una primera colocación defectuosa del
+  guard: quedó incrustado en la continuación de `\` del comando ansible-playbook,
+  que se quedó sin playbook (16/17 antes del tag). Reubicado antes del inicio del
+  comando y re-verificado; el veneno se limpió igualmente en esa corrida.
+
 ## [v1.12.2] — 2026-10-30
 
 ### Corregido

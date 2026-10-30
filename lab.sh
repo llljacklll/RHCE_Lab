@@ -146,11 +146,6 @@ function print_help() {
     echo "  $0 run --vault sitio_con_vault.yml"
     echo "  $0 exam --random 4"
     echo "  $0 exam --start"
-    # [v1.12.2] saneo httpd: exam_002 dejaba "Listen 8080" y haproxy usa el 8080;
-    # sin saneo la Fase 4 revienta en la siguiente corrida (8080 ocupado).
-    for hn in node1 node2 node3; do
-      docker exec "$hn" sh -c "sed -i '/^Listen.*8080/d' /etc/httpd/conf/httpd.conf /etc/httpd/conf.d/*.conf 2>/dev/null; systemctl reset-failed httpd 2>/dev/null; systemctl is-active httpd >/dev/null 2>&1 || systemctl start httpd 2>/dev/null" 2>/dev/null || true
-    done
     echo "  $0 run site.yml"
     echo "  $0 grade"
     exit 0

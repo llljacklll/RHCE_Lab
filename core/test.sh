@@ -183,6 +183,11 @@ function lab_test() {
 
     local tmp_file; tmp_file=$(mktemp)
     echo -e "  ${CYAN}[...] Ejecutando site.yml (salida en vivo):${NC}"
+    # [v1.12.3] saneo httpd: un "Listen 8080" residual choca con haproxy
+    # (8080 ocupado en los nodos) y deja httpd failed; se sanea antes de site.yml.
+    for hn in node1 node2 node3; do
+      docker exec "$hn" sh -c "sed -i '/^Listen.*8080/d' /etc/httpd/conf/httpd.conf /etc/httpd/conf.d/*.conf 2>/dev/null; systemctl reset-failed httpd 2>/dev/null; systemctl is-active httpd >/dev/null 2>&1 || systemctl start httpd 2>/dev/null" 2>/dev/null || true
+    done
     docker exec -w /opt/ansible control ansible-playbook \
         -i /opt/ansible/inventory/hosts.ini \
         -e "ansible_become_password=ansible" \
