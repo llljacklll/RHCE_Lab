@@ -1,34 +1,65 @@
 #!/bin/bash
 # ============================================================
-#  DOCKER/SETUP-DISKS.SH — Discos LVM fake por nodo (arranque)
+#  DOCKER/SETUP-DISKS.SH — attach idempotente por nodo
+#  v1.12.4-r3 (C-A del dictamen + revisiones de ChatGPT):
+#  el NODO nunca destruye y SOLO adjunta lo verificablemente
+#  libre.
 # ------------------------------------------------------------
-#  Lo invoca fake-disks.service en cada boot: deja a CADA nodo
-#  con SU pareja de /dev/loopN de 1G para las prácticas LVM.
-#
-#  DISEÑO:
-#   - Los loop devices son GLOBALES en el kernel (compartidos
-#     por todos los contenedores): por eso cada nodo tiene una
-#     pareja FIJA y solo toca la suya:
-#       node1 -> loop0/1   node2 -> loop2/3
-#       node3 -> loop4/5   control -> ninguno
-#   - Identidad por hostname O por IP fija (case con ambas):
-#     robusto aunque falle el hostname temporal.
-#   - EL10 no crea /dev/loopN por sí solo: mknod propio de
-#     loop-control y de los dos loops si faltan.
-#   - Si el kernel aún no tiene ese número de loop, se registra
-#     desde dentro con LOOP_CTL_ADD (ioctl 0x4C80; exige
-#     privileged) y se reintenta el attach.
-#   - PROHIBIDO 'losetup -D': es global y desmontaría también
-#     los discos de los OTROS nodos.
-#   - wipefs al final: cada arranque nace limpio; una práctica
-#     a medias de ayer no contamina la de hoy.
-#   - set -e: cualquier fallo corta el script entero — un nodo
-#     con medio disco adjunto es peor que un nodo sin discos.
+#  Correcciones r3 (dictamen NO-GO de la r2):
+#   A) clasifica(): la lectura de sysfs se comprueba de
+#      verdad (resultado Y contenido). Atributo ausente
+#      cuando debería estar, ilegible o vacío -> 7; fuentes
+#      que discrepan -> 7. LIBRE exige el acuerdo de DOS
+#      fuentes: sin línea en losetup -a Y sin dir loop/ en
+#      sysfs.  H1 (hallazgo propio r3): la r2 devolvía 7
+#      para el loop registrado y SIN adjuntar (el dir loop/,
+#      igual que backing_file, solo existe con binding
+#      activo; lo confirma v1.12.3 en la MV), lo que
+#      rompería el primer attach. Ahora ese caso es 1.
+#   B) use_devicesfile=0: se exige la directiva EFECTIVA
+#      dentro de devices{} (sin comentarios y en su
+#      bloque); una coincidencia textual suelta no vale.
+#   C) imagen que no mide 1G: NO se adjunta (se conserva el
+#      rc 6 y "LVM Ready" no se anuncia).
+#  Correcciones r2 sobre la r1:
+#   B) LIBRE solo con el loop confirmado libre; si el estado
+#      no se puede verificar (sysfs ausente, fuentes que
+#      discrepan, loop "lost") -> 7 NO VERIFICABLE: se
+#      aborta, jamás se trata como libre.
+#   C) GHOST (misma ruta, inodo retenido distinto) y CONFLICT
+#      (otra ruta) se distinguen en la clasificación (3 y 4).
+#   D) tras cada attach se re-clasifica; si el binding no
+#      corresponde a la imagen esperada -> fallo y sin "LVM
+#      Ready" (cierra la carrera clasificar->adjuntar).
+#   E) imagen de tamaño != 1G eleva rc y bloquea "LVM Ready".
+#   F) use_devicesfile=0 se verifica después del sed.
+#  El inodo retenido sale del KERNEL (lo_inode del
+#  LOOP_GET_STATUS64; losetup -a lo imprime como
+#  "dev: [hexdev]:inodo (ruta)") y se CRUZA con sysfs
+#  backing_file; si las fuentes discrepan -> 7.
+#  El borrado fresh vive SOLO en el anfitrión (FRESH_MARKER,
+#  _lab_wipe_node en core/disks.sh). down/up da discos nuevos
+#  por construcción (las .img viven en la capa del contenedor);
+#  restart/start conserva los datos del alumno (G01/G02).
+#  Códigos: 0 OK · 1 LIBRE confirmado (uso interno) · 3 GHOST
+#  · 4 CONFLICT · 5 fallo operativo · 6 tamaño incorrecto ·
+#  7 NO VERIFICABLE. 3/4/7 exigen decisión manual: nunca se
+#  desadjunta ni se sobrescribe nada.
+#  Ganchos de test: SYS_BLOCK, LOSETUP, DISK_DIR y LVM_CONF
+#  solo se sobreescriben en pruebas unitarias; en la MV
+#  valen los por defecto.
+#  SIN set -e a propósito: los códigos los gobierna la
+#  clasificación, no el primer comando que falle.
 # ============================================================
-set -e
-DISK_DIR="/opt/lvm_disks"; mkdir -p "$DISK_DIR"
 
-# identidad del contenedor: hostname o IP fija (python3 siempre esta en los nodos)
+SYS_BLOCK="${SYS_BLOCK:-/sys/block}"
+LOSETUP="${LOSETUP:-losetup}"
+
+DISK_DIR="${DISK_DIR:-/opt/lvm_disks}"
+LVM_CONF="${LVM_CONF:-/etc/lvm/lvm.conf}"
+mkdir -p "$DISK_DIR"
+
+# identidad: hostname o IP fija (igual que v1.12.3)
 SELF_IP=$(python3 -c 'import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(("172.20.0.10",1)); print(s.getsockname()[0])' 2>/dev/null || true)
 case "${HOSTNAME} ${SELF_IP}" in
     *node1*|*172.20.0.11*) L0=0; L1=1 ;;
@@ -37,6 +68,7 @@ case "${HOSTNAME} ${SELF_IP}" in
     *) echo "fake-disk: '${HOSTNAME}' no lleva discos (skip)"; exit 0 ;;
 esac
 D0=/dev/loop$L0; D1=/dev/loop$L1
+I0="$DISK_DIR/disk1.img"; I1="$DISK_DIR/disk2.img"
 echo "fake-disk: ${HOSTNAME} -> $D0 $D1"
 
 # nodos loop: crear si faltan (EL10 no los trae)
@@ -44,40 +76,44 @@ echo "fake-disk: ${HOSTNAME} -> $D0 $D1"
 [ -b "$D0" ] || mknod "$D0" b 7 "$L0"
 [ -b "$D1" ] || mknod "$D1" b 7 "$L1"
 
-# imagenes 1G y attach SOLO a los propios
-truncate -s 1G "$DISK_DIR/disk1.img" "$DISK_DIR/disk2.img"
+# nota <código>: guarda el peor código de salida. Los estados
+# que exigen decisión manual (3/4/7) prevalecen sobre los
+# fallos operativos (5/6); el primer fallo operativo manda.
+rc=0
+nota() {
+    [ "$1" -eq 0 ] && return 0
+    case "$rc" in 3|4|7) return 0 ;; esac
+    case "$1" in 3|4|7) rc=$1; return 0 ;; esac
+    [ "$rc" -eq 0 ] && rc=$1
+    return 0
+}
 
-# DM fantasma + loops zombi: dm y loops son GLOBALES en el kernel
-# y sobreviven al recreate del contenedor. Un LV activo de la
-# generacion anterior retiene MI loop: losetup -d y el attach
-# acaban en EBUSY y set -e mata el servicio (node1/node2 en el
-# up de las 15:58; node3 en el de las 16:40 pese al ancla de un
-# solo pase: la remocion forzada de un dm puede quedar DIFERIDA
-# unos segundos y un solo intento no converge). Ahora la limpieza
-# es CONVERGENTE (reintenta y verifica por sysfs) y el attach
-# reintenta con re-limpieza. Solo toco los dm cuyo slave DIRECTO
-# es uno de mis loops: jamas los dm de otros nodos.
-limpia_dms() {
-    for d in "$D0" "$D1"; do
-        for dm in /sys/block/dm-*; do
-            [ -e "$dm/slaves/${d#/dev/}" ] || continue
-            base=${dm#/sys/block/}
-            majmin=$(cat "$dm/dev" 2>/dev/null) || continue
-            [ -e "/dev/$base" ] || mknod "/dev/$base" b \
-                "${majmin%:*}" "${majmin#*:}" 2>/dev/null || true
-            dmsetup remove -f "/dev/$base" 2>/dev/null || true
-        done
-    done
+# imagenes 1G: crear si faltan; si una existente no mide 1G,
+# AVISO + código 6 + bandera: NO se adjunta (C-r3); jamás se
+# redimensiona ni se toca
+prepara_img() {   # $1=imagen  $2=nombre de la variable-bandera
+    if [ ! -f "$1" ]; then
+        truncate -s 1G "$1"
+        return 0
+    fi
+    local sz
+    sz=$(stat -c '%s' "$1")
+    if [ "$sz" -eq 1073741824 ]; then
+        return 0
+    fi
+    echo "fake-disk: AVISO: $1 mide $sz bytes (esperado 1073741824); no se toca ni se adjunta" >&2
+    printf -v "$2" 1
+    nota 6
+    return 0
 }
-suelta_loops() {
-    losetup -d "$D0" 2>/dev/null || true
-    losetup -d "$D1" 2>/dev/null || true
-}
-loop_libre() {  # $1=/dev/loopN -> RC 0 si SIN backing (libre)
-    [ ! -e "/sys/block/${1#/dev/}/loop/backing_file" ]
-}
+MAL0=0; MAL1=0
+prepara_img "$I0" MAL0
+prepara_img "$I1" MAL1
+
+udevadm settle --timeout=3 2>/dev/null || true
+
 registra_loops() {
-    # kernel device sin registrar: LOOP_CTL_ADD desde dentro (privileged)
+    # registra loop0-7 en el kernel si faltan (privileged)
     python3 - <<'PYEOF' 2>/dev/null || true
 import fcntl, os
 fd = os.open('/dev/loop-control', os.O_RDWR)
@@ -86,56 +122,137 @@ for j in range(8):
     except OSError: pass
 PYEOF
 }
-adjunta() {  # $1=/dev/loopN  $2=imagen
-    local i
-    for i in 1 2 3 4 5; do
-        if losetup "$1" "$2" 2>/dev/null; then
-            return 0
-        fi
-        limpia_dms
-        suelta_loops
-        registra_loops
-        sleep 1
-    done
-    # ultimo intento EN VOZ ALTA: si falla, set -e mata el servicio
-    losetup "$1" "$2"
+
+# clasifica $1=/dev/loopN contra la imagen esperada $2
+#   0=OK (misma ruta y mismo inodo retenido)  1=LIBRE confirmado
+#   3=GHOST (misma ruta, otro inodo)  4=CONFLICT (otra ruta)
+#   6=imagen ausente  7=NO VERIFICABLE (jamás se trata como libre)
+# r3 (A): LIBRE exige el acuerdo de DOS fuentes (losetup -a
+# sin línea Y sin dir loop/ en sysfs); con binding declarado,
+# la lectura de backing_file se comprueba de verdad
+# (resultado y contenido): ausente/ilegible/vacío -> 7.
+clasifica() {
+    local l="$1" img="$2" want la line bp held ruta bpf
+    [ -e "$img" ] || return 6
+    want=$(stat -c '%i' "$img" 2>/dev/null) || return 6
+    [ -d "$SYS_BLOCK" ] || return 7
+    if [ ! -d "$SYS_BLOCK/${l#/dev/}" ]; then
+        return 1      # el kernel no conoce el dispositivo: libre definitivo
+    fi
+    bpf="$SYS_BLOCK/${l#/dev/}/loop/backing_file"
+    la=$("$LOSETUP" -a 2>/dev/null) || return 7
+    line=$(printf '%s\n' "$la" | awk -v d="$l:" '$1 == d')
+    if [ -n "$line" ]; then
+        # binding declarado: sysfs DEBE corroborarlo de verdad
+        [ -e "$bpf" ] || return 7    # attr ausente cuando debe estar: 7
+        bp=$(cat "$bpf" 2>/dev/null) || bp=""
+        [ -n "$bp" ] || return 7     # attr ilegible o vacío: 7
+        held=$(printf '%s\n' "$line" | sed -n 's/^[^ ]*: \[[^]]*\]:\([0-9]*\).*/\1/p')
+        ruta=$(printf '%s\n' "$line" | sed -n 's/^[^ ]*: \[[^]]*\]:[0-9]* (\(.*\))$/\1/p')
+        { [ -n "$held" ] && [ -n "$ruta" ]; } || return 7
+        [ "$bp" = "$ruta" ] || return 7   # fuentes discrepan: 7
+        [ "$ruta" != "$img" ] && return 4   # CONFLICT: otra ruta
+        [ "$held" = "$want" ] && return 0   # OK: mismo inodo retenido
+        return 3                            # GHOST: misma ruta, otro inodo
+    fi
+    # losetup no lo lista: LIBRE solo si sysfs confirma sin binding
+    [ -e "$bpf" ] && return 7        # attr de backing presente: discrepancia
+    [ -d "$SYS_BLOCK/${l#/dev/}/loop" ] && return 7
+    return 1                         # dos fuentes sin binding: LIBRE confirmado
 }
 
-# frenar posibles interferentes LVM (no-op si ya van saltados)
-systemctl stop lvm2-monitor.service dm-event.socket dm-event.service \
-    2>/dev/null || true
-udevadm settle --timeout=3 2>/dev/null || true
+# diagnóstico del conflicto (sin acciones destructivas)
+reporta_conflicto() {
+    local l="$1" img="$2" st="$3" bp wi held
+    bp=$(cat "$SYS_BLOCK/${l#/dev/}/loop/backing_file" 2>/dev/null)
+    wi=$(stat -c '%i' "$img" 2>/dev/null)
+    held=$("$LOSETUP" -a 2>/dev/null | awk -v d="$l:" '$1 == d' \
+           | sed -n 's/^[^ ]*: \[[^]]*\]:\([0-9]*\).*/\1/p')
+    echo "fake-disk: CONFLICTO en $l (código $st):" >&2
+    case "$st" in
+        3) echo "  tipo: GHOST — misma ruta, inodo retenido distinto" >&2 ;;
+        4) echo "  tipo: CONFLICT — asociado a otro fichero" >&2 ;;
+        *) echo "  tipo: NO VERIFICABLE — estado inconsistente o ilegible" >&2 ;;
+    esac
+    echo "  esperado: $img (inodo actual ${wi:-?})" >&2
+    echo "  sysfs backing : ${bp:-<vacío o ilegible>}" >&2
+    echo "  inodo retenido: ${held:-<no disponible>}" >&2
+    echo "  holders:" >&2
+    lsblk -no MAJ:MIN,NAME,HOLDERS "$l" 2>/dev/null | sed 's/^/    /' >&2
+    echo "  NO se desadjunta ni se sobrescribe automáticamente." >&2
+    echo "  Runbook: docs/auditoria (RB-1); no sacrificar LV activo." >&2
+}
 
-# convergencia: hasta ~10s dejando MIS loops libres antes del attach
-i=1
-while [ "$i" -le 10 ]; do
-    limpia_dms
-    suelta_loops
-    if loop_libre "$D0" && loop_libre "$D1"; then
-        break
+for par in "$D0:$I0:MAL0" "$D1:$I1:MAL1"; do
+    l=${par%%:*}; r=${par#*:}; img=${r%%:*}; flag=${r##*:}
+    if [ "${!flag}" = 1 ]; then
+        echo "fake-disk: [..] $l: NO se adjunta: $img incumple el contrato de tamaño" >&2
+        nota 6
+        continue
     fi
-    sleep 1
-    i=$((i+1))
+    clasifica "$l" "$img"; st=$?
+    case $st in
+        0) echo "fake-disk: $l OK ($img) — sin cambios" ;;
+        1) registra_loops
+           if losetup "$l" "$img" 2>/dev/null; then
+               clasifica "$l" "$img"; vst=$?
+               if [ "$vst" -eq 0 ]; then
+                   echo "fake-disk: adjuntado y verificado $l -> $img"
+               else
+                   echo "fake-disk: [!!] attach NO verificado en $l (clasifica=$vst)" >&2
+                   nota 5
+               fi
+           elif losetup "$l" "$img"; then
+               clasifica "$l" "$img"; vst=$?
+               if [ "$vst" -eq 0 ]; then
+                   echo "fake-disk: adjuntado y verificado $l -> $img (2do intento)"
+               else
+                   echo "fake-disk: [!!] attach NO verificado en $l (clasifica=$vst)" >&2
+                   nota 5
+               fi
+           else
+               echo "fake-disk: ERROR adjuntando $l" >&2
+               nota 5
+           fi ;;
+        3|4) reporta_conflicto "$l" "$img" "$st"; nota "$st" ;;
+        6) echo "fake-disk: [!!] $img ausente: imposible verificar" >&2; nota 6 ;;
+        *) reporta_conflicto "$l" "$img" 7; nota 7 ;;
+    esac
 done
-if ! ( loop_libre "$D0" && loop_libre "$D1" ); then
-    echo "fake-disk: AVISO: $D0/$D1 siguen ocupados tras 10s" >&2
+
+# verificación honesta: ambos discos con su 1G real
+for l in "$D0" "$D1"; do
+    sz=$(blockdev --getsize64 "$l" 2>/dev/null || echo 0)
+    if [ "$sz" -ne 1073741824 ]; then
+        echo "fake-disk: $l sin 1G real (size=$sz)" >&2
+        nota 6
+    fi
+done
+
+# precondición LVM (B-r3): la directiva EFECTIVA dentro de
+# devices{} — no vale una coincidencia textual comentada o
+# fuera de bloque; se comprueba antes y después de editar.
+udf_ok() {
+    local cf="${LVM_CONF:-/etc/lvm/lvm.conf}"
+    [ -f "$cf" ] || return 1
+    awk '
+        /^[[:space:]]*devices[[:space:]]*\{/ {dev=1; next}
+        dev && /^[[:space:]]*[[:alnum:]_]+[[:space:]]*\{/ {exit}
+        dev {
+            sub(/[[:space:]]*#.*/, "")
+            if ($0 ~ /^[[:space:]]*use_devicesfile[[:space:]]*=[[:space:]]*0[[:space:]]*$/) {print "OK"; exit}
+        }
+    ' "$cf" 2>/dev/null | grep -qx OK
+}
+if ! udf_ok; then
+    sed -i '/^[[:space:]]*devices[[:space:]]*[{]/a\    use_devicesfile = 0' \
+        "${LVM_CONF:-/etc/lvm/lvm.conf}" 2>/dev/null
+    udf_ok || { echo "fake-disk: [!!] no pude asegurar use_devicesfile=0 (efectiva en devices{})" >&2; nota 5; }
 fi
 
-adjunta "$D0" "$DISK_DIR/disk1.img"
-adjunta "$D1" "$DISK_DIR/disk2.img"
-
-# verificacion honesta: ambos discos con su 1G real (no medio disco)
-for d in "$D0" "$D1"; do
-    sz=$(blockdev --getsize64 "$d" 2>/dev/null || echo 0)
-    if [ "$sz" -ne 1073741824 ]; then
-        echo "fake-disk: $d sin 1G real (size=$sz)" >&2
-        exit 1
-    fi
-done
-wipefs -a "$D0" 2>/dev/null || true
-wipefs -a "$D1" 2>/dev/null || true
-
-# lvm.conf (lvmlocal.conf ya cubre el grueso)
-grep -q "use_devicesfile = 0" /etc/lvm/lvm.conf \
-    || sed -i '/^devices {/a\    use_devicesfile = 0' /etc/lvm/lvm.conf
-echo "LVM Ready: ${HOSTNAME} -> $D0 $D1"
+if [ "$rc" -eq 0 ]; then
+    echo "LVM Ready: ${HOSTNAME} -> $D0 $D1 (attach idempotente v1.12.4-r3)"
+else
+    echo "fake-disk: salida con código $rc; SIN 'LVM Ready'" >&2
+fi
+exit $rc

@@ -298,3 +298,8 @@ function lab_shell() {
 # ------------------------------------------------------------
 source "$(dirname "$(readlink -f "$0")")/core/disks.sh" 2>/dev/null \
   || source core/disks.sh 2>/dev/null || true
+
+# v1.12.4 (C-A..C-F): overrides of the ruling — ALWAYS at the end,
+# after the source of core/disks.sh
+source "$(dirname "$(readlink -f "$0")")/core/v1124.sh" 2>/dev/null \
+  || source core/v1124.sh 2>/dev/null || true
