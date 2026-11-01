@@ -4,6 +4,40 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## [v1.12.4] — 2026-11-01
+
+### Added
+- **core/v1124.sh**: overrides del dictamen de auditoría (2026-10-30), condiciones
+  C-A..C-F: attach idempotente por sysfs (C-A), lvm_off sin --force con verificación
+  de montajes (C-B), down = lvm_off (contenedores vivos) → compose down → liberar
+  solo loops libres (C-C), daemon.json por Python preservando claves (C-D), fresh
+  verificado en anfitrión (C-E) y doctor con detección de residuos device-mapper
+  y pistas de rescate (C-F).
+- **tests/**: arnés de pruebas r3/r4/r5, harness del parche (r5: doble run 130/0
+  en MV real, pre-activación).
+- Doctor: nueva línea de diagnóstico `[!!] device-mapper residual` con remedio
+  sugerido (`./lab.sh reset`).
+
+### Changed
+- **core/docker.sh**: source de core/v1124.sh SIEMPRE al final, tras core/disks.sh
+  (fallback dual de ruta) — los overrides pisan al código base sin tocarlo.
+
+### Fixed
+- **docker/setup-disks.sh**: pre-check exacto por par de discos (OK/FREE/GHOST/
+  CONFLICT; conflicto ⇒ diagnóstico, cero auto-reparación), rescate no destructivo
+  y verificación del borrado fresh en anfitrión.
+
+### Verificación (MV real, 2026-11-01)
+- Batería `./lab.sh test`: 17/17 en tres ejecuciones sobre código activado
+  (post-up, post-restart y sobre el árbol etiquetado); idempotencia entre pasadas
+  (RECAP changed=0 sobre residuos de la pasada anterior).
+- Restart de los 4 contenedores: loops y filtros LVM sobreviven sin re-ejecutar up.
+- Down con residuos DM reales: secuencia C-C íntegra, anfitrión verificado limpio
+  (0 vg_*, 0 loops, 0 contenedores).
+- Almacenamiento: las imágenes (2 × 1 GiB por nodo) viven dentro de cada nodo
+  (`/opt/lvm_disks` en su namespace); el anfitrión no guarda nada fuera de docker.
+- Evidencia íntegra en `hitos/` (commit f0fbfec); dictamen de diseño en 47d665e.
+
 ## [v1.12.3] — 2026-10-30
 
 ### Fixed
