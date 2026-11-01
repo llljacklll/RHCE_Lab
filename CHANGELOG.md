@@ -38,6 +38,18 @@ Las versiones anteriores a v1.3.4 son pre-historia del repo.
   (`/opt/lvm_disks` en su namespace); el anfitrión no guarda nada fuera de docker.
 - Evidencia íntegra en `hitos/` (commit f0fbfec); dictamen de diseño en 47d665e.
 
+### Notas operativas (dictamen #6, 2026-11-01)
+- Restart: los loops y filtros LVM de cada nodo sobreviven al reinicio de los
+  contenedores; no hace falta re-ejecutar `up` para recuperarlos.
+- Down: desactiva el LVM dentro de los nodos ANTES de retirar contenedores y
+  libera únicamente los loops sin holders; verifica el estado final.
+- Docker DNS: se conserva en `daemon.json` la configuración ajena al laboratorio
+  y solo se gestiona la clave `dns`.
+- Alcance del gate: los escenarios del banco se validan funcionalmente (batería);
+  las reglas de transporte/formato del banco quedan fuera de v1.12.4 y pasan al
+  backlog de v1.13.0 (parser YAML propio, reglas UTF-8, comprobaciones de los
+  activos didácticos). Nunca mezclar gate de transporte con gate funcional.
+
 ## [v1.12.3] — 2026-10-30
 
 ### Fixed
