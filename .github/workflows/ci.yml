@@ -129,3 +129,5 @@ jobs:
 
       - name: "5/5 Anti-huerfanos: pool <-> soluciones <-> README"
         run: bash core/lint_pool.sh
+      - name: "6/6 Banco: formato, esquema y cruces (valida_banco)"
+        run: bash core/valida_banco.sh
