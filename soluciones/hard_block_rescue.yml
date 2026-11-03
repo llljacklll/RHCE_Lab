@@ -11,7 +11,7 @@
 #    - Play 1 (control, localhost): CREA el entregable
 #      /home/ansible/block_rescue.yml con el contenido exacto
 #      block/rescue/always. Es el fichero que el checker inspecciona
-#      dentro del contenedor control. Sin become: /home/ansible es
+#      dentro del contenedor control. become: false explicito:
 #      el HOME del propio usuario, no hace falta root.
 #    - Play 2 (nodos): EJECUTA la misma logica contra todos los
 #      nodos (equivale a ansible-playbook block_rescue.yml): block
@@ -42,6 +42,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
 
   tasks:
     - name: Directorio del entregable
