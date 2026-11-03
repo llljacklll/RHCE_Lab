@@ -82,7 +82,7 @@ docker compose version >/dev/null 2>&1 \
     || fail "falta docker-compose-plugin"
 python3 -c "import yaml" >/dev/null 2>&1 \
     && echo "[OK] PyYAML importable: $(python3 -c 'import yaml; print(yaml.__version__)')" \
-    || fail "python3-pyyaml no importable (mirar: which -a python3)"
+    || fail "python3-pyyaml no importable; re-lanza este script o revisa la instalacion canonica (which -a python3)"
 [ -e /dev/loop-control ] && echo "[OK] /dev/loop-control (discos fake LVM)" \
     || { modprobe loop 2>/dev/null || true; \
          [ -e /dev/loop-control ] && echo "[OK] /dev/loop-control (tras modprobe loop)" \

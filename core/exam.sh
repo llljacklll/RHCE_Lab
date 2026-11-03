@@ -102,11 +102,13 @@ function lab_exam() {
     # cortes LIMPIOS antes de tocar estado:
     #   1. require_pyyaml: python3 + PyYAML presentes, con mensaje
     #      accionable en vez de traceback.
-    #   2. pre-flight: current_exam.yml parseable y NO vacio. Cubre
+    #   2. pre-flight: YAML parseable, NO vacio y raiz mapping
+    #      (dictamen #8: una lista/escalar pasaria safe_load y romperia
+    #      d.get mas abajo -> half-start). Cubre
     #      el caso --start y el residuo vacio que deja un --random
     #      fallido (el [ -f ] de --start acepta ficheros vacios).
     require_pyyaml "exam"
-    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if d else 1)" "$CURRENT_EXAM_FILE" >/dev/null 2>&1; then
+    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if isinstance(d,dict) and d else 1)" "$CURRENT_EXAM_FILE" >/dev/null 2>&1; then
         echo -e "${RED}Error: $CURRENT_EXAM_FILE no es YAML valido (o vacio); no se inicia el examen.${NC}"
         echo -e "${YELLOW}       Vuelve a generarlo: ./lab.sh exam --random${NC}"
         exit 1

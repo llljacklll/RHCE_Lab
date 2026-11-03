@@ -79,10 +79,12 @@ function generate_random_exam() {
     # destruye el examen generado antes y deja un residuo vacio que
     # el [ -f ] de --start aceptaria. Cortar ANTES de tocar nada:
     #   1. require_pyyaml: mensaje accionable en vez de traceback.
-    #   2. pre-flight del pool: si el banco no es YAML valido, no se
+    #   2. pre-flight del pool: YAML valido, NO vacio y raiz mapping
+    #      (dictamen #8). Si no, no se toca current_exam.yml
+    #      (diagnostico: core/valida_banco.sh).
     #      toca current_exam.yml (diagnostico: core/valida_banco.sh).
     require_pyyaml "exam --random"
-    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if d else 1)" "$TASK_POOL_FILE" >/dev/null 2>&1; then
+    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if isinstance(d,dict) and d else 1)" "$TASK_POOL_FILE" >/dev/null 2>&1; then
         echo -e "${RED}[-] task_pool.yml no es YAML valido; no se sortea.${NC}"
         echo -e "${YELLOW}    Diagnostico completo: core/valida_banco.sh${NC}"
         exit 1
