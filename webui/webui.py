@@ -32,7 +32,9 @@ Regla de oro: la web es un mando a distancia del CLI.
    el terminal AUTOconecta al abrir el panel y "Reconectar" solo
    aparece cuando la sesion ha caido.
 
-Solo stdlib (el python3 de la propia MV). Lanzar: ./lab.sh web
+Stdlib + PyYAML perezoso SOLO para leer el estado (15A): si falta, la
+web degrada la tarjeta de examen y avisa con el remedio canonico
+(bash scripts/vm_bootstrap.sh). Lanzar: ./lab.sh web
 """
 import argparse
 import base64
@@ -48,6 +50,7 @@ import signal
 import socket
 import struct
 import subprocess
+import sys
 import termios
 import threading
 import time
@@ -122,37 +125,86 @@ def read_runlog(offset):
 # ======================================================================
 SCORE_RE = re.compile(r"^\s*Nota\s*:\s*(\d+)\s*/\s*(\d+)", re.M)
 
+# ======================================================================
+# 15A - PyYAML perezoso en la web (V-2 aplicado a webui; dictamen #10
+# R3): el servidor sigue arrancando sin PyYAML (el terminal WS no lo
+# necesita); el import solo ocurre cuando alguien lee el estado. Si
+# falta: tarjeta de examen degradada + aviso accionable en el JSON
+# ("warning") y por stderr (una sola vez). Remedio unico y canonico
+# (V-2/V-3): bash scripts/vm_bootstrap.sh
+# Raiz mapping exigida (dictamen #8): lista, escalar, vacio o YAML
+# roto -> estado vacio seguro; nunca traceback ni half-start.
+# ======================================================================
+_YAML_WARN = ("PyYAML no disponible: la tarjeta de examen no puede leer "
+              "el estado. Reparalo con el auto-instalador del lab y "
+              "reintenta: bash scripts/vm_bootstrap.sh (instala python3-pyyaml)")
+_YAML_WARNED = False
 
-def _num_with_key(txt, keypart):
-    for k, v in re.findall(r"([A-Za-z_]\w*)\s*[:=]\s*([0-9.]+)", txt):
-        if keypart in k.lower():
-            try:
-                return float(v)
-            except ValueError:
-                pass
-    return None
+
+def _pyyaml():
+    """Devuelve (yaml, None) si PyYAML esta, o (None, aviso accionable)."""
+    global _YAML_WARNED
+    try:
+        import yaml
+    except ImportError:
+        if not _YAML_WARNED:
+            _YAML_WARNED = True
+            print("[!] " + _YAML_WARN, file=sys.stderr)
+        return None, _YAML_WARN
+    return yaml, None
+
+
+def pyyaml_warning():
+    """Aviso accionable para el JSON de la API (None si PyYAML esta)."""
+    _, warn = _pyyaml()
+    return warn
+
+
+def _load_state_yaml(fname):
+    """safe_load de state/<fname> con raiz mapping exigida (dictamen #8):
+    lista, escalar, vacio, YAML roto o fichero ausente -> ({}, None).
+    Con PyYAML ausente -> ({}, aviso). Nunca lanza."""
+    yaml, warn = _pyyaml()
+    if yaml is None:
+        return {}, warn
+    try:
+        with open(STATE_DIR / fname, encoding="utf-8", errors="ignore") as f:
+            d = yaml.safe_load(f)
+    except (OSError, yaml.YAMLError):
+        return {}, None
+    return (d if isinstance(d, dict) else {}), None
+
+
+def _num(v):
+    """float tolerante (None si no es numerico)."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
 
 
 def lab_state():
     st = {"active": False, "status": None, "exam": None,
           "time_limit": None, "remaining": None}
-    ef = STATE_DIR / "current_exam.yml"
-    if ef.exists():
-        txt = ef.read_text(errors="ignore")
-        m = re.search(r"^\s*id:\s*(\S+)", txt, re.M)
-        if m:
-            st["exam"] = m.group(1)
-        tl = _num_with_key(txt, "time_limit")
+    d, warn = _load_state_yaml("current_exam.yml")
+    if warn:
+        st["warning"] = warn
+    if d:
+        if d.get("id"):
+            st["exam"] = str(d.get("id"))
+        tl = _num(d.get("time_limit"))
         if tl:
             st["time_limit"] = int(tl)
-    sf = STATE_DIR / "exam_status.yml"
-    if sf.exists():
-        txt = sf.read_text(errors="ignore")
-        m = re.search(r"^\s*status\s*:\s*(\w+)", txt, re.M)
-        if m:
-            st["status"] = m.group(1)
-        start = _num_with_key(txt, "start")
-        end = _num_with_key(txt, "end")
+    s, _ = _load_state_yaml("exam_status.yml")
+    if s:
+        if s.get("status"):
+            st["status"] = str(s.get("status"))
+        start = _num(s.get("start"))
+        if start is None:
+            start = _num(s.get("start_time"))
+        end = _num(s.get("end"))
+        if end is None:
+            end = _num(s.get("end_time"))
         if st["status"] in ("running", "expired") or (start and start > 1e9):
             st["active"] = True
         if start and start > 1e9:
@@ -181,32 +233,32 @@ def last_results(n=5):
 
 # ======================================================================
 # LOTE 28 - tareas del examen y soluciones de referencia (solo LECTURA).
-#   exam_tasks:    '- id: <task>' + '  description: ...' por tarea,
-#                  tal como las serializa yaml.dump en current_exam.yml.
+#   exam_tasks (15A): lee el estado con safe_load y raiz mapping
+#       (dictamen #8); muere el parser regex propio (pendiente
+#       historico del CHANGELOG, dictamen #6). Las descripciones
+#       llegan como UTF-8 real, vengan del formato nuevo
+#       (allow_unicode) o del escapado antiguo (\xF1).
 #   read_solution: task saneado [A-Za-z0-9_]+ ANTES de tocar el disco;
 #                  sin ese gate un ?task=../../etc/passwd leeria ficheros
 #                  que no son suyos.
 # ======================================================================
-TASK_ID_RE = re.compile(r"^\s*-\s+id:\s*(\S+)\s*$", re.M)
-DESC_RE = re.compile(r"^\s+description:\s*(.+?)\s*$", re.M)
 SOL_TASK_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
 
 def exam_tasks():
-    ef = STATE_DIR / "current_exam.yml"
-    if not ef.exists():
+    d, _ = _load_state_yaml("current_exam.yml")
+    tasks = d.get("tasks") if d else None
+    if not isinstance(tasks, list):
         return []
-    txt = ef.read_text(errors="ignore")
     out = []
-    for m in TASK_ID_RE.finditer(txt):
-        rest = txt[m.end():]
-        stop = re.search(r"^\s*-\s+id:|^\s*checks:", rest, re.M)
-        span = rest[:stop.start()] if stop else rest
-        d = DESC_RE.search(span)
-        desc = d.group(1).strip() if d else ""
-        if len(desc) > 1 and desc[0] == desc[-1] and desc[0] in "'\"":
-            desc = desc[1:-1]
-        out.append({"id": m.group(1), "desc": html.escape(desc)})
+    for t in tasks:
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("id") or "").strip()
+        if not tid:
+            continue
+        out.append({"id": tid,
+                    "desc": html.escape(str(t.get("description") or ""))})
     return out
 
 
@@ -818,7 +870,7 @@ class Handler(BaseHTTPRequestHandler):
                             "lab": lab_state(), "last": last_results(),
                             "project": str(PROJECT_DIR)})
         elif u.path == "/api/exam":
-            self._json(200, {"tasks": exam_tasks()})
+            self._json(200, {"tasks": exam_tasks(), "warning": pyyaml_warning()})
         elif u.path == "/api/solucion":
             task = parse_qs(u.query).get("task", [""])[0]
             content = read_solution(task)

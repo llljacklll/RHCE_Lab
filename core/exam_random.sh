@@ -137,7 +137,11 @@ exam = {"id": "random_exam", "difficulty": dif, "title": "Examen Aleatorio RHCE"
 for t in selected:
     exam["tasks"].append({"id": t["id"], "description": t["description"]})
     for c in t.get("checks", []): item = {"task_id": t["id"]}; item.update(c); exam["checks"].append(item)
-print(yaml.dump(exam, default_flow_style=False, sort_keys=False, width=1000))
+# 15A - regla UTF-8 de transporte (dictamen #6): allow_unicode=True
+# escribe los acentos como UTF-8 real (no \xF1) y current_exam.yml
+# sigue siendo greppable; safe_load decodifica tambien el formato
+# escapado antiguo (retrocompatible).
+print(yaml.dump(exam, default_flow_style=False, sort_keys=False, width=1000, allow_unicode=True))
 PYEOF2
 
     # Post-condición: si Python falló (PyYAML ausente, banco

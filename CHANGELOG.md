@@ -4,6 +4,27 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## v1.14.0 - saga 15A: webui con PyYAML perezoso y regla UTF-8
+
+Fecha: 2026-11-03. Cierra los dos pendientes de hitos/14E_cierre_saga.txt (webui
+require_pyyaml propio con pruebas que no tocan el arranque del lab,
+dictamen #10 R3; y la parte del backlog historico de parser YAML propio y
+reglas UTF-8, dictamen #6).
+
+- webui/webui.py: muere el parser regex propio; lab_state y exam_tasks
+  leen con yaml.safe_load perezoso (raiz mapping, dictamen #8; raiz no
+  mapping, YAML roto o vacio -> vacio seguro sin traceback). Mueren
+  _num_with_key, TASK_ID_RE y DESC_RE; read_solution y SCORE_RE intactos.
+- Guardia PyYAML propia: sin el paquete la web NO se cae; degrada la
+  tarjeta de examen y avisa con el remedio canonico (JSON warning una
+  vez por proceso + stderr): bash scripts/vm_bootstrap.sh
+- core/exam_random.sh: yaml.dump(..., allow_unicode=True) (regla UTF-8,
+  dictamen #6); retrocompatible via safe_load con el formato escapado.
+- tests/pruebas_webui.sh (nueva): bateria hermetica de 16 casos, sin
+  lab, sin docker y sin tocar el state/ real (dictamen #10, R3).
+
+Sigue en backlog: comprobaciones de los activos didacticos (sin fecha).
+
 ## v1.13.0 (14C-a, V-1): Validador del banco y puerta CI 6/6
 - Nuevo `core/valida_banco.sh`: formato, esquema y cruces del banco de tareas (capas A/B/C).
 - Nueva puerta `6/6 Banco` en `.github/workflows/ci.yml`, junto a la `5/5 Anti-huerfanos`.
