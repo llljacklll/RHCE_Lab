@@ -1,6 +1,6 @@
 # ============================================================================
 #  SOLUCION MODELO -- hard_fcontext_multi          [dificultad: hard]
-#                     (Task Pack #3)
+# ----------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 #  TAREA: SELinux: /srv/tools como public_content_t y /srv/incoming
 #  como public_content_rw_t, con sus reglas fcontext y restorecon.

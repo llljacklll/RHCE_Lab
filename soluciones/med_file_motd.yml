@@ -1,6 +1,6 @@
 # ============================================================================
 #  SOLUCION MODELO -- med_file_motd                        [dificultad: medium]
-#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
 #  TAREA: "En cada nodo, dejar escrito /etc/motd con el aviso 'Acceso
 #          monitorizado' (el fichero debe contener ese texto)"

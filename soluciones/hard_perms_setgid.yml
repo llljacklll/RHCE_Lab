@@ -1,6 +1,6 @@
 # ============================================================================
 #  SOLUCION MODELO -- hard_perms_setgid                    [dificultad: hard]
-#                     (Task Pack #4)
+# ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
 #  TAREA: "Crea el grupo 'proj' y el directorio /srv/proyectos propiedad
 #          del grupo proj con permisos 2770 (setgid)"

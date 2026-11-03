@@ -1,6 +1,6 @@
 # ============================================================================
 #  SOLUCION MODELO -- hard_block_rescue            [dificultad: hard]
-#                     (Task Pack #2)
+# ----------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 #  TAREA: con un playbook guardado en control:/home/ansible/
 #  block_rescue.yml (ruta EXIGIDA por el enunciado): un block que
