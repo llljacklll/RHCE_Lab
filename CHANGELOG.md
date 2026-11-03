@@ -4,6 +4,29 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## v1.13.0 (14C-a, V-1): Validador del banco y puerta CI 6/6
+- Nuevo `core/valida_banco.sh`: formato, esquema y cruces del banco de tareas (capas A/B/C).
+- Nueva puerta `6/6 Banco` en `.github/workflows/ci.yml`, junto a la `5/5 Anti-huerfanos`.
+- Evidencia: `hitos/14Ca_positivo.txt`, `hitos/14Ca_negativos.txt`, `hitos/14Ca_lint.txt`.
+
+## v1.13.1 (14C-b, V-2): PyYAML como dependencia de consumidores perezosos
+- `lab.sh` deja de exigir PyYAML en el arranque (aviso no bloqueante): `up`/`down`/`ps`/`logs`/ayuda operan sin el.
+- Guardias `require_pyyaml` en los consumidores reales (`exam`, `exam_random`, `lint_pool`), con remedio unico: `bash scripts/vm_bootstrap.sh`.
+- Preflight anti half-start en `exam.sh`: YAML parseable y no vacio antes de tocar `state/current_exam.yml`.
+- Evidencia: `hitos/14Cb_*.txt` (baterias 11/11 y 7/7, con shim y con el lab arriba/abajo).
+
+## v1.13.2 (14C-c, V-3): Verificacion real de importacion en el bootstrap
+- La fase 6 de `scripts/vm_bootstrap.sh` verifica `import yaml` (rpm instalado no implica importable); el `fail` apunta a la instalacion canonica.
+- Aceptacion con ciclo completo: `rpm -e --nodeps python3-pyyaml` -> bootstrap -> import OK -> segunda corrida idempotente.
+- Evidencia: `hitos/14Cc_2_pyyaml_en_bootstrap.txt`.
+
+## v1.13.3 (14C-d, dictamen #8): Raiz mapping exigida en los preflights
+- La guardia exige documento YAML con raiz tipo mapping: lista/escalar/vacio se rechazan de forma segura (antes, un `current_exam.yml` en lista pasaba `safe_load` y rompia `d.get` -> half-start).
+- `time_limit` vacio sigue admitido (practica libre legitima); `require_pyyaml` se mantiene como control de disponibilidad, no como validador.
+- Evidencia: `hitos/14Cd_dictamen8_mapping.txt` (9/9, E2E con el lab arriba).
+
+**Pruebas globales (14D):** bateria cruzada V-1/V-2/V-3 + auditoria Q4 sobre el arbol final (perimetros por commit, alcance total, name-status, modos git, whitelist de 10 consumidores YAML, gates 5/6, guardias con shim, bootstrap idempotente, `state/` byte a byte): 14/14 VERDE. Detalle reproducible en `hitos/14D_informe_cruzado.txt`. Etiqueta de release: `v1.13.4`.
+
 ## [v1.12.4] — 2026-11-01
 
 ### Added
