@@ -1,6 +1,6 @@
-# ===========================================================================
+# ============================================================================
 #  SOLUCION MODELO -- med_repo_docker               [dificultad: medium]
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #  TAREA (hueco #2 del intel): configurar en TODOS los nodos el
 #  repositorio 'docker-ce-stable' con el baseurl estable de Docker
 #  para EL10, su gpgkey y habilitado.

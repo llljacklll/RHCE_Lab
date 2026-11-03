@@ -1,6 +1,6 @@
-# ===========================================================================
+# ============================================================================
 #  SOLUCION MODELO -- hard_haproxy_bal              [dificultad: hard]
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #  TAREA (hueco #6 del intel, el balanceador): instalar haproxy en
 #  todos los nodos, configurar un frontend en :8080 que reparta por
 #  round-robin entre el httpd de node1, node2 y node3 (:80) y dejar

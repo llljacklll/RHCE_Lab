@@ -1,6 +1,6 @@
-# ===========================================================================
+# ============================================================================
 #  SOLUCION MODELO -- med_galaxy_reqs               [dificultad: medium]
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #  TAREA: en control, crear /home/ansible/requirements.yml declarando
 #  la coleccion community.crypto e instalarla con ansible-galaxy.
 #

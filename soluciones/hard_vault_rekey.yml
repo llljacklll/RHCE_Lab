@@ -1,6 +1,6 @@
-# ===========================================================================
+# ============================================================================
 #  SOLUCION MODELO -- hard_vault_rekey              [dificultad: hard]
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #  TAREA (pregunta #9 del intel): dejar /home/ansible/vault_ops.yml
 #  (ops_secret=RekeyEx294) cifrado con la contraseña DEL LABORATORIO
 #  partiendo de la contraseña vieja de /home/ansible/.pass_old.
