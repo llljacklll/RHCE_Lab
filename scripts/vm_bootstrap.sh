@@ -15,7 +15,7 @@
 #   4) Instalación — engine + plugins + PyYAML.
 #   5) Servicio — docker.service habilitado y arrancado.
 #   6) Verificación — dockerd responde, compose v2, loop-control
-#                 y cgroup v2 (requisitos del lab).
+#                 PyYAML importable y cgroup v2 (requisitos del lab).
 #   7) Loops — registra /dev/loop0-15 en el kernel y los
 #                 MANTIENE con la unidad rhce-lab-loop: EL10 no
 #                 los crea al arrancar (el kernel de WSL2 sí;
@@ -80,6 +80,9 @@ for i in 1 2 3 4 5; do docker info >/dev/null 2>&1 && ok=1 && break; sleep 2; do
 docker compose version >/dev/null 2>&1 \
     && echo "[OK] compose v2: $(docker compose version)" \
     || fail "falta docker-compose-plugin"
+python3 -c "import yaml" >/dev/null 2>&1 \
+    && echo "[OK] PyYAML importable: $(python3 -c 'import yaml; print(yaml.__version__)')" \
+    || fail "python3-pyyaml no importable (mirar: which -a python3)"
 [ -e /dev/loop-control ] && echo "[OK] /dev/loop-control (discos fake LVM)" \
     || { modprobe loop 2>/dev/null || true; \
          [ -e /dev/loop-control ] && echo "[OK] /dev/loop-control (tras modprobe loop)" \
