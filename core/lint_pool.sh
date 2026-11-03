@@ -37,6 +37,13 @@ for f in "$POOL" "$README"; do
 done
 [ -d "$SOL" ] || { echo "[FAIL] falta $SOL/"; exit 1; }
 
+# --- V-2 (14C-b): G1 y siguientes leen el pool con Python+PyYAML.
+# Sin PyYAML los gates de abajo darian falsos OK/FAIL: cortar aqui con
+# mensaje claro (lint_pool corre tambien standalone, sin utils.sh).
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+    echo "[FAIL] PyYAML no disponible para lint_pool (instala: bash scripts/vm_bootstrap.sh)"; exit 1
+fi
+
 # --- G1: ids del pool (misma fuente de verdad que la CI 2/5)
 ids=$(python3 - <<'PYLP'
 import yaml

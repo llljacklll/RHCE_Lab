@@ -114,3 +114,25 @@ function reset_exam_state() {
     rm -f "$CURRENT_EXAM_FILE"
     rm -f "$EXAM_STATUS_FILE"
 }
+
+# ============================================================================
+# require_pyyaml <comando> -- guardian V-2 (14C-b): PyYAML perezoso
+# ----------------------------------------------------------------------------
+# QUE: comprueba que python3 puede importar yaml ANTES de que cualquier
+#      consumidor de YAML toque estado. Si falta, aborta con mensaje
+#      accionable (exit 1).
+# POR QUE: desde 14C-b, lab.sh ya NO corta el arranque por PyYAML: el aviso
+#      inicial pasa a ser no bloqueante y el corte real ocurre AQUI, solo
+#      cuando se pide una funcion que de verdad necesita YAML (exam, grade,
+#      lint...). Asi up/down/logs/ps (BASH puro) siguen funcionando sin el.
+# USO: require_pyyaml "exam --random"
+# ============================================================================
+function require_pyyaml() {
+    if python3 -c "import yaml" >/dev/null 2>&1; then
+        return 0
+    fi
+    echo -e "${RED}[-] PyYAML no disponible: '${1:-?}' lo necesita.${NC}"
+    echo -e "${YELLOW}    Reparalo con el auto-instalador del lab y reintenta:${NC}"
+    echo -e "${YELLOW}        bash scripts/vm_bootstrap.sh   (instala python3-pyyaml)${NC}"
+    exit 1
+}

@@ -94,6 +94,24 @@ function lab_exam() {
     # nodos: sin el lab levantado no tiene sentido seguir.
     require_control_running
 
+    # ---------- V-2 (14C-b): guardianes antes del parseo ----------
+    # Si el parseo de abajo muere (PyYAML ausente o YAML corrupto),
+    # py_out llega vacio y el 'read' reparte tres cadenas vacias:
+    # el heredoc de exam_status.yml (unas lineas mas abajo) escribiria
+    # un status "running" medio arrancado y sin cronometro. Dos
+    # cortes LIMPIOS antes de tocar estado:
+    #   1. require_pyyaml: python3 + PyYAML presentes, con mensaje
+    #      accionable en vez de traceback.
+    #   2. pre-flight: current_exam.yml parseable y NO vacio. Cubre
+    #      el caso --start y el residuo vacio que deja un --random
+    #      fallido (el [ -f ] de --start acepta ficheros vacios).
+    require_pyyaml "exam"
+    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if d else 1)" "$CURRENT_EXAM_FILE" >/dev/null 2>&1; then
+        echo -e "${RED}Error: $CURRENT_EXAM_FILE no es YAML valido (o vacio); no se inicia el examen.${NC}"
+        echo -e "${YELLOW}       Vuelve a generarlo: ./lab.sh exam --random${NC}"
+        exit 1
+    fi
+
     # ---------- Parsear metadatos (difficulty|title|tiempo) ----------
     # Python (PyYAML) extrae los tres campos y los devuelve
     # SEPARADOS POR | en una sola línea: una sola llamada

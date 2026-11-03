@@ -72,6 +72,22 @@ function generate_random_exam() {
     # con el mensaje indicado.
     require_file_exists "$TASK_POOL_FILE" "No existe task_pool.yml"
 
+    # ---------- V-2 (14C-b): guardianes antes del sorteo ----------
+    # El bloque python de abajo redirige '> "$CURRENT_EXAM_FILE"' :
+    # el fichero se TRUNCA antes de que python corra. Un intento
+    # fallido (PyYAML ausente, pool corrupto) no solo aborta: ademas
+    # destruye el examen generado antes y deja un residuo vacio que
+    # el [ -f ] de --start aceptaria. Cortar ANTES de tocar nada:
+    #   1. require_pyyaml: mensaje accionable en vez de traceback.
+    #   2. pre-flight del pool: si el banco no es YAML valido, no se
+    #      toca current_exam.yml (diagnostico: core/valida_banco.sh).
+    require_pyyaml "exam --random"
+    if ! python3 -c "import yaml,sys; d=yaml.safe_load(open(sys.argv[1])); sys.exit(0 if d else 1)" "$TASK_POOL_FILE" >/dev/null 2>&1; then
+        echo -e "${RED}[-] task_pool.yml no es YAML valido; no se sortea.${NC}"
+        echo -e "${YELLOW}    Diagnostico completo: core/valida_banco.sh${NC}"
+        exit 1
+    fi
+
     echo -e "${CYAN}[+] Generando examen aleatorio (${num_tasks} tareas, dificultad ${difficulty})...${NC}"
 
     # ------------------------------------------------------------

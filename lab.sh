@@ -32,16 +32,28 @@
 # [1] PREFLIGHT — dependencias del HOST (no de los contenedores)
 # ----------------------------------------------------------------------------
 # Necesita: docker CLI + plugin 'docker compose' v2 (no el viejo
-# docker-compose), python3 con PyYAML (los generadores leen YAML) y
-# /dev/loop0 (los discos de las tareas LVM son loops del host). Si falta
-# ALGO, auto-repara con scripts/vm_bootstrap.sh (idempotente).
+# docker-compose) y /dev/loop0 (los discos de las tareas LVM son loops
+# del host). Si falta ALGO de eso, auto-repara con scripts/vm_bootstrap.sh
+# (idempotente).
+# V-2 (14C-b): PyYAML ya NO es prerequisito de arranque ni dispara la
+# auto-reparacion: solo lo consumen exam y lint_pool, que cortan solos
+# via require_pyyaml (core/utils.sh) con mensaje accionable. Mas abajo,
+# solo un aviso no bloqueante.
 command -v docker >/dev/null 2>&1 || DEP_MISSING=1
 docker compose version >/dev/null 2>&1 || DEP_MISSING=1
-python3 -c "import yaml" >/dev/null 2>&1 || DEP_MISSING=1
 [ -e /dev/loop0 ] || DEP_MISSING=1
 if [ "${DEP_MISSING:-0}" = "1" ]; then
   echo "[!] Faltan dependencias del host -> ejecutando scripts/vm_bootstrap.sh"
   bash "$(dirname "$(readlink -f "$0")")/scripts/vm_bootstrap.sh" || { echo "[X] vm_bootstrap.sh fallo"; exit 1; }
+fi
+
+# V-2 (14C-b): aviso NO bloqueante. El corte real vive en require_pyyaml
+# (core/utils.sh), que exam y lint_pool invocan antes de tocar nada. Se
+# evalua DESPUES del bootstrap: si vm_bootstrap.sh instalo PyYAML, aqui
+# ya no se avisa.
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+  echo "[!] PyYAML no disponible: 'exam' y 'lint_pool' fallaran hasta instalarlo."
+  echo "    Fix: bash scripts/vm_bootstrap.sh   (up/down/ps/logs no lo necesitan)"
 fi
 
 # Daemon de docker caído -> un intento de arranque vía systemd y seguir
