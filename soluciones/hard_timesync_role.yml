@@ -1,3 +1,9 @@
+# ===========================================================================
+#  SOLUCION MODELO -- hard_timesync_role            [dificultad: hard]
+# ----------------------------------------------------------------------------
+#  TAREA (vendor offline): construir e instalar offline la coleccion
+#  redhat.rhel_system_roles (stub minimo con el rol timesync) y aplicarlo
+#  a node1, node2 y node3.
 ---
 # v1.12.2 -- coleccion vendor offline de redhat.rhel_system_roles
 # galaxy.ansible.com NO sirve esta coleccion (API v3 count=0), asi que el lab

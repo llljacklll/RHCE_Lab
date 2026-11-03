@@ -1,5 +1,5 @@
 # ============================================================================
-#  SOLUCIÓN DE REFERENCIA — hard_cron                     [dificultad: hard]
+#  SOLUCION MODELO -- hard_cron                     [dificultad: hard]
 # ----------------------------------------------------------------------------
 #  TAREA: "Añade una entrada cron diaria para el usuario 'ansible' que
 #  ejecute '/usr/bin/echo backup'."

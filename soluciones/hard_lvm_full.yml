@@ -1,5 +1,5 @@
 # ============================================================================
-#  SOLUCIÓN DE REFERENCIA — hard_lvm_full                 [dificultad: hard]
+#  SOLUCION MODELO -- hard_lvm_full                 [dificultad: hard]
 # ----------------------------------------------------------------------------
 #  TAREA: "En cada nodo: VG vg_<nodo> en el disco extra, LV 'lv_data' de
 #  300 MB, filesystem ext4 y montaje persistente en /mnt/datos."

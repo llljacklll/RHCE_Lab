@@ -1,5 +1,5 @@
 # ============================================================================
-#  SOLUCIÓN DE REFERENCIA — hard_lvm_vg                  [dificultad: hard]
+#  SOLUCION MODELO -- hard_lvm_vg                  [dificultad: hard]
 # ----------------------------------------------------------------------------
 #  TAREA: "Crea un Volume Group llamado vg_<nodo> sobre el disco extra de
 #  cada nodo" (node1 -> vg_node1 sobre /dev/loop0, etc.).

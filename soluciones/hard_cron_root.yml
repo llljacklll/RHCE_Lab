@@ -1,5 +1,5 @@
 # ============================================================================
-#  SOLUCIÓN DE REFERENCIA — hard_cron_root               [dificultad: hard]
+#  SOLUCION MODELO -- hard_cron_root               [dificultad: hard]
 # ----------------------------------------------------------------------------
 #  TAREA: "Añade una entrada cron diaria para ROOT que ejecute
 #  '/usr/local/bin/backup.sh'."
