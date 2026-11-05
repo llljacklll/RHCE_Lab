@@ -45,11 +45,36 @@ for n in node1:0 node2:2 node3:4; do
         || bad "$c: /dev/loop$l sin disco (revisar fake-disk.service)"
 done
 
-hdr "4/5 LVM usable y nvme real oculto"
-SZ=$(docker exec node1 blockdev --getsize64 /dev/loop0 2>/dev/null)
-[ "$SZ" = "1073741824" ] && ok "node1: /dev/loop0 = 1G" || bad "node1: /dev/loop0 raro (tam=$SZ)"
-PVS=$(docker exec node1 pvs --noheadings -o pv_name 2>/dev/null | tr -d " ")
-[ "$PVS" = "/dev/loop0" ] && ok "filtro LVM: 1 PV (/dev/loop0), nvme real oculto" || bad "filtro LVM: pvs=[$PVS] (esperado /dev/loop0)"
+hdr "4/5 LVM usable y aislamiento por nodo"
+# (a) Capacidad: presencia y tamano de AMBOS discos de cada pareja (solo lectura).
+for par in "node1:0 1" "node2:2 3" "node3:4 5"; do
+    c=${par%%:*}; propios=${par#*:}
+    for n in $propios; do
+        SZ=$(docker exec "$c" blockdev --getsize64 "/dev/loop$n" 2>/dev/null)
+        [ "$SZ" = "1073741824" ] && ok "$c: /dev/loop$n = 1G" || bad "$c: /dev/loop$n raro (tam=$SZ)"
+    done
+done
+# (b) Admision + aislamiento con oraculo lvmdiskscan: escanea TODO lo que el
+#     filtro deja ver a LVM (con PV o en blanco) y NADA mas. Evidencia 16A2:
+#     lista la pareja completa de cada nodo (disco1 con PV + disco2 en blanco)
+#     y oculta el nvme real, los vecinos y el resto. pvs -a queda DESCARTADO
+#     como oraculo: en esta pila omite los discos en blanco de forma no fiable
+#     (3 de 4 ejecuciones; sospecha hints/cache de LVM2, backlog LVMDISK-2).
+#     Frente al contrato viejo (pvs == /dev/loop0), este check NO depende del
+#     estado del lab: pasa en pristino y tras practica, porque no afirma
+#     cuantos PV hay, solo QUE la pareja completa es admisible y nada ajeno
+#     se cuela. Los unicos admitidos fuera de la pareja son los carve-outs del
+#     propio filtro (/dev/md* y /dev/mapper/luks-*): asi es el contrato disenado.
+for par in "node1:0 1" "node2:2 3" "node3:4 5"; do
+    c=${par%%:*}; propios=${par#*:}
+    LISTA=$(docker exec "$c" lvmdiskscan 2>/dev/null | awk '/\/dev\//{print $1}' | sort)
+    ESPERA=$(for n in $propios; do echo "/dev/loop$n"; done | sort)
+    FALTA=$(comm -23 <(echo "$ESPERA") <(echo "$LISTA"))
+    EXTRA=$(comm -13 <(echo "$ESPERA") <(echo "$LISTA") | grep -vE '^/dev/md[0-9]*$|^/dev/mapper/luks-' || true)
+    if [ -n "$FALTA" ]; then bad "$c: LVM no admite:$FALTA (ve: $(echo $LISTA | tr '\n' ' '))"
+    elif [ -n "$EXTRA" ]; then bad "$c: filtro deja ver ajenos:$(echo $EXTRA | tr '\n' ' ')"
+    else ok "$c: LVM admite su pareja completa y nada ajeno (aislamiento OK)"; fi
+done
 
 hdr "5/5 Ansible Vault"
 docker exec control ansible-vault view --vault-password-file /opt/ansible/files/.vault_pass \

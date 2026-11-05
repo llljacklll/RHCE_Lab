@@ -31,8 +31,10 @@ primera release pública. Nada del motor del lab cambia.
   documentada la 6/6 Banco (valida_banco, activa desde v1.13.0).
 - Higiene: core/gate.sh recupera el bit de ejecución (se sourcea, no
   se ejecuta; uniformidad con sus hermanos).
-- Evidencia: hitos/16A0_clon_fresco_host_caliente.txt y
-  hitos/16A1_smoke_aislamiento.txt.
+- Evidencia: hitos/16A0_clon_fresco_host_caliente.txt,
+  hitos/16A1_smoke_aislamiento.txt y
+  hitos/16A2_smoke_contrato_parejas.txt (contrato por parejas,
+  certificado doble en VM real; adendum de sondas pvs en LVMDISK-2).
 
 ## v1.15.0 - saga 15B: G5/G6/G7 en el anti-huerfanos y play 0 explicito
 
