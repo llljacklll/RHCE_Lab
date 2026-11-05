@@ -4,7 +4,7 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
-## v1.15.0 - saga 15B: puertas G5/G6/G7 en el anti-huerfanos y play 0 explicito
+## v1.15.0 - saga 15B: G5/G6/G7 en el anti-huerfanos y play 0 explicito
 
 Fecha: 2026-11-04. Cierra la saga 15B: tres puertas nuevas
 en core/lint_pool.sh y una enmienda de explicitud en el banco.
@@ -18,17 +18,19 @@ en core/lint_pool.sh y una enmienda de explicitud en el banco.
 - Bateria hermetica de 16 fixtures via LINT_POOL_ROOT (P00, N01-N12,
   R01-R03), sin lab, sin docker y sin tocar el state/ real.
 - soluciones/hard_block_rescue.yml: become: false explicito en play 0
-  con comentario veraz (Opcion A: decision didactica declarada, sin
+  con comentario veraz (Opcion A: decision didactica explicita, sin
   excepcion en G7); play 1 y entregable literal intactos.
-- CI: la puerta 5/5 Anti-huerfanos ejecuta core/lint_pool.sh, asi que
-  G5-G7 corren en CI sin tocar .github/workflows/ci.yml.
+- CI: .github/workflows/ci.yml ya invocaba core/lint_pool.sh en su
+  puerta 5/5 Anti-huerfanos; el workflow no cambia y, al ganar G5-G7
+  el script, corren en CI desde este commit.
 - Evidencia: hitos/15B_cierre_saga.txt.
 
 ## v1.14.1 - canon de cabeceras del banco (precondicion de la puerta G5)
 
-Fecha: 2026-11-03. Entrada retroactiva: el canon de cabeceras de la
-tarde del 3 no tuvo entrada propia; se documenta para que el registro
-cubra la cadena completa de la saga 15B.
+Fecha de aplicacion: 2026-11-03. Fecha de documentacion: 2026-11-04.
+Entrada retroactiva: el canon de cabeceras de la tarde del 3 no tuvo
+entrada propia; se documenta para que el registro cubra la cadena
+completa de la saga 15B.
 
 - soluciones/*.yml: cabeceras normalizadas al formato canonico (37/37,
   695f8f6); canon de longitud de cabecera - familia 78 (12 ficheros,
