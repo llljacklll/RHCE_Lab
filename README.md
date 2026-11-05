@@ -152,14 +152,17 @@ Flujo probado de punta a punta con una MV restaurada **sin Docker y sin
 /dev/loopN**: el lab auto-bootstrapea el host, recompila desde cero y
 queda prístino.
 
-**El atajo** (docker si falta + `pull` + `up` + `doctor` en un solo comando):
+**El atajo** (dependencias si faltan + saneo git + `up` + `doctor`, en un solo comando):
 
 ```bash
 bash bootstrap.sh
 ```
 
-> Si el snapshot tenía cambios sin commitear, el `pull` interno de
-> `bootstrap.sh` se lo salta: usa el flujo manual con `stash`.
+> ATENCIÓN: el paso git de `bootstrap.sh` hace `fetch + reset --hard
+> origin/main` + `clean -fd`: DESCARTA sin piedad cambios locales sin
+> commitear y borra lo untracked. Si el snapshot lleva trabajo que
+> quieras conservar, guárdalo ANTES (commit o `git stash push`): el
+> remoto manda y el bootstrap no pide permiso.
 
 **El flujo manual** equivalente, para saber qué pasa dentro:
 
@@ -289,7 +292,9 @@ bash scripts/smoke_test.sh              # infra: contenedores, ping, discos, vau
   devices son **recursos globales del kernel**, así que cada nodo usa
   una **pareja fija** (node1: `loop0/1`, node2: `loop2/3`, node3:
   `loop4/5`; control ninguno) y `setup-disks.sh` nunca hace
-  `losetup -D`. Como EL10 no crea `/dev/loopN` al arrancar,
+  `losetup -D`. Los exámenes y sus soluciones usan solo el primer
+  disco de cada pareja (`loop0/2/4`); el segundo (`loop1/3/5`) queda
+  como disco de práctica libre del alumno. Como EL10 no crea `/dev/loopN` al arrancar,
   `vm_bootstrap.sh` los registra vía `LOOP_CTL_ADD` y
   `rhce-lab-loop.service` los mantiene tras reinicios. Sin udev,
   `lvcreate` requiere `--wipesignatures n --zero n` (los playbooks de

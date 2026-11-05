@@ -4,6 +4,36 @@ Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
 
+## v1.15.1 - pre-release pública: smoke al contrato prístino + README de restauración al día
+
+Fecha: 2026-11-05. Parche de verificación y documentación previo a la
+primera release pública. Nada del motor del lab cambia.
+
+- scripts/smoke_test.sh: el check 4/5 exigía exactamente 1 PV
+  (/dev/loop0), un contrato que solo se cumple tras practicar LVM; en
+  un lab recién levantado pvs=[] es el estado correcto (discos
+  prístinos, checkers honestos) y el primer usuario público veía 1
+  FAIL siguiendo el README al pie de la letra. Rediseñado en dos capas
+  sin mutación: (a) capacidad — blockdev verifica presencia y tamaño
+  (1G) de los DOS discos de cada pareja; (b) admisión y aislamiento —
+  lvmdiskscan (que sí lista los discos en blanco, a diferencia de
+  pvs -a en este LVM2) debe ver exactamente la pareja propia de cada
+  nodo: el nvme real del host y los discos de otros nodos, fuera.
+  Verde igual en lab prístino que practicado (rerun-safe).
+- README: aclaración en notas técnicas de que los exámenes usan solo
+  el primer disco de cada pareja (loop0/2/4); el segundo (loop1/3/5)
+  queda como disco de práctica libre.
+- README: la nota del atajo bootstrap.sh describía un `pull` interno
+  que ya no existe; el bootstrap v1.3.4 sanea con fetch + reset --hard
+  + clean y DESCARTA cambios locales sin commitear. Nota reescrita para
+  avisar de la pérdida real de datos.
+- CI: cabecera de .github/workflows/ci.yml renumerada a 6 puertas y
+  documentada la 6/6 Banco (valida_banco, activa desde v1.13.0).
+- Higiene: core/gate.sh recupera el bit de ejecución (se sourcea, no
+  se ejecuta; uniformidad con sus hermanos).
+- Evidencia: hitos/16A0_clon_fresco_host_caliente.txt y
+  hitos/16A1_smoke_aislamiento.txt.
+
 ## v1.15.0 - saga 15B: G5/G6/G7 en el anti-huerfanos y play 0 explicito
 
 Fecha: 2026-11-04. Cierra la saga 15B: tres puertas nuevas
