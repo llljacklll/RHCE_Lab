@@ -3,6 +3,12 @@
 Registro de cambios notables del proyecto. Formato basado en
 Keep a Changelog; versionado SemVer (vMAYOR.MENOR.PARCHE).
 Las versiones anteriores a v1.3.4 son pre-historia del repo.
+> **Nota de saneamiento (desde v1.15.1):** antes de la primera
+> publicación pública se retiró la carpeta `hitos/`, que recogía la
+> evidencia interna de desarrollo. Las líneas "Evidencia" de las
+> entradas históricas se conservan tal cual: citan ficheros que ya no
+> forman parte del árbol.
+
 
 ## v1.15.1 - pre-release pública: smoke al contrato prístino + README de restauración al día
 

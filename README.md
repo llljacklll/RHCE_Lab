@@ -322,7 +322,7 @@ El detalle de cada LOTE está en [CHANGELOG.md](CHANGELOG.md) (formato
 Keep a Changelog, versionado SemVer). Versión instalada del lab:
 
 ```bash
-git describe --tags    # p. ej. v1.10.0
+git describe --tags    # p. ej. v1.15.1
 ```
 
 ## Roadmap

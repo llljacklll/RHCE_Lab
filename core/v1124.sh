@@ -4,7 +4,8 @@
 #  r4: incorpora el tercer dictamen (B1/B2 bloqueantes + B3)
 #  r5: incorpora el cuarto dictamen (holders + reconsulta
 #      post-detach); r4 queda sellado como revisión
-#      intermedia (copia íntegra en hitos/v1124_r4.sh)
+#      intermedia (copia íntegra retirada del árbol en el
+#      saneamiento previo a la publicación pública)
 # ------------------------------------------------------------
 #  Se sourcea AL FINAL de core/docker.sh (después de
 #  core/disks.sh): bash resuelve funciones en tiempo de
