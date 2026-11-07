@@ -341,4 +341,11 @@ git describe --tags    # p. ej. v1.15.1
 
 CC BY-NC-SA 4.0 — ver [LICENSE](LICENSE).
 
+### Alcance de la licencia
+
+- **Documentación, material educativo, escenarios y soluciones**: CC BY-NC-SA 4.0 (atribución, no comercial, compartir igual).
+- **Scripts del laboratorio** (`lab.sh`, `core/`, `webui/`, `bootstrap.sh`): misma CC BY-NC-SA 4.0, por decisión deliberada del propietario. CC no es una licencia de software estándar: es una limitación registrada, no una omisión.
+- **Recursos de terceros**: conservan SIEMPRE su licencia propia (ver el encabezado del propio fichero, p. ej. `webui/static/xterm.min.js`). Nada de lo vendido la reemplaza.
+
+
 **Autor:** llljacklll · construido con asistencia de IA.
