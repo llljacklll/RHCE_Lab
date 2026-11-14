@@ -489,6 +489,10 @@ async function poll(){
   }
   polling=false;setButtons(true);
   if(j)badge((j.action||'')+' -> exit '+j.exit);
+  // FIX WA (bug webui #1): generar otro examen o corregir cierra la
+  // solucion del examen anterior. Doctor/start no la tocan (no cambian
+  // el examen en pantalla).
+  if(j&&(j.action==='generate'||j.action==='grade'))resetSolution();
   refreshStatus();loadTasks();
 }
 
@@ -545,6 +549,15 @@ function paintChips(){
     b.textContent=b.dataset.do==='edit'
       ?(editingTask===b.dataset.id?'cerrar edicion':'editar')
       :(solShown===b.dataset.id?'cerrar solucion':'mostrar solucion');});}
+// FIX WA (bug webui #1): cierre canonico del panel de solucion. La
+// solucion pertenece al examen con el que se abrio: no puede sobrevivir
+// ni a un 'generate' ni a un 'grade'. El toggle manual ("cerrar
+// solucion") sigue siendo la via del modo aprendizaje.
+function resetSolution(){
+  solShown=null;
+  const c=$('solcard');if(c)c.style.display='none';
+  const p=$('solpre');if(p)p.textContent='';
+  paintChips();}
 async function loadTasks(){
   try{
     const j=await(await fetch('/api/exam')).json();
@@ -912,6 +925,15 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if params.get("d") not in DIFFICULTIES:
                 self._json(400, {"error": "dificultad no valida"})
+                return
+        # FIX WA (bug webui #2, defensa en profundidad del guard B3 del
+        # CLI): 'start' con un cronometro ya en marcha se rechaza AQUI,
+        # sin despawnear el CLI — el doble clic tardio no puede
+        # regenerar el examen. 'expired' SI pasa: via de recuperacion.
+        if name == "start":
+            if lab_state().get("status") == "running":
+                self._json(409, {"error":
+                    "examen ya en marcha: usa Grade o espera a que expire"})
                 return
         try:
             argv = [a.format(**params) for a in ACTIONS[name]]

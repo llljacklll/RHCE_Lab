@@ -61,13 +61,25 @@ function lab_exam() {
         # Tras el shift, $1/$2 son los argumentos de --random
         # (número y/o dificultad, en cualquier orden: el swap
         # lo hace generate_random_exam).
-        generate_random_exam "$1" "${2:-mixed}"
-        echo ""
-        echo -e "${YELLOW}=========================================${NC}"
-        echo -e "${CYAN}[!] Examen guardado en: state/current_exam.yml${NC}"
-        echo -e "${CYAN}[!] Para comenzar el examen y el cronómetro:${NC}"
-        echo -e "${GREEN}    ./lab.sh exam --start${NC}"
-        echo -e "${YELLOW}=========================================${NC}"
+        if generate_random_exam "$1" "${2:-mixed}"; then
+            # FIX B2 (bug webui #2): un examen nuevo nace SIN cronómetro.
+            # Antes 'generate' no tocaba exam_status.yml y un timer viejo
+            # (running o expired) sobrevivía al examen nuevo: el reloj
+            # seguía "por donde iba" y un expired viejo bloqueaba el
+            # grade del examen nuevo indefinidamente. Ahora se mata el
+            # cronómetro anterior y se limpia el estado; sin fichero de
+            # estado, grade.sh corrige en modo práctica libre hasta un
+            # --start explícito (semántica ya documentada en grade.sh).
+            _stop_timer
+            rm -f "$EXAM_STATUS_FILE"
+            echo ""
+            echo -e "${YELLOW}=========================================${NC}"
+            echo -e "${CYAN}[!] Examen guardado en: state/current_exam.yml${NC}"
+            echo -e "${CYAN}[!] Cronómetro anterior detenido y estado limpiado.${NC}"
+            echo -e "${CYAN}[!] Para comenzar el examen y el cronómetro:${NC}"
+            echo -e "${GREEN}    ./lab.sh exam --start${NC}"
+            echo -e "${YELLOW}=========================================${NC}"
+        fi
         return
     fi
 
@@ -133,6 +145,28 @@ PYEOF
     # (un pipe lo cerraría para futuros comandos).
     local difficulty title time_limit
     IFS='|' read -r difficulty title time_limit <<< "$py_out"
+
+    # ---------- FIX B3: no reiniciar un cronómetro en marcha ----------
+    # 'exam --start' era reiniciable en silencio: un segundo arranque
+    # sobreescribía start_time y el reloj volvía a cero sin aviso (era
+    # el doble clic accidental de la web). Se rechaza mientras exista
+    # un examen corriendo; 'expired' SÍ permite reiniciar (vía de
+    # recuperación natural, verificada en el repro del propietario).
+    if [ -f "$EXAM_STATUS_FILE" ]; then
+        local st s_start s_limit elapsed
+        st=$(grep "^status:" "$EXAM_STATUS_FILE" | awk '{print $2}')
+        if [ "$st" = "running" ]; then
+            s_start=$(grep "^start_time:" "$EXAM_STATUS_FILE" | awk '{print $2}')
+            s_limit=$(grep "^time_limit:" "$EXAM_STATUS_FILE" | awk '{print $2}')
+            elapsed=0
+            if [[ "$s_start" =~ ^[0-9]+$ ]]; then
+                elapsed=$(( ($(date +%s) - s_start) / 60 ))
+            fi
+            echo -e "${RED}Error: ya hay un examen en marcha (lleva ${elapsed} min de ${s_limit:-?}).${NC}"
+            echo -e "${YELLOW}       Corrígelo con ./lab.sh grade o espera a que expire antes de iniciar otro.${NC}"
+            exit 1
+        fi
+    fi
 
     # ---------- Escribir el estado (arranca el reloj lógico) ----------
     # date +%s = epoch en segundos: robusto ante reboots y
@@ -236,6 +270,22 @@ function _print_exam_instructions() {
 }
 
 # ------------------------------------------------------------
+# _stop_timer → mata el cronómetro en background si sigue vivo
+#   Única fuente de verdad de la limpieza del timer. La usa
+#   _start_timer (solo puede haber un cronómetro) y, desde el
+#   FIX B2, también el --random: un examen nuevo nace sin reloj.
+# ------------------------------------------------------------
+function _stop_timer() {
+    if [ -f "$TIMER_PID_FILE" ]; then
+        # hijos primero (sleep del timer anterior), luego el padre:
+        # el kill del padre deja el sleep como huerfano
+        pkill -P "$(cat "$TIMER_PID_FILE")" 2>/dev/null || true
+        kill "$(cat "$TIMER_PID_FILE")" 2>/dev/null || true
+        rm -f "$TIMER_PID_FILE"
+    fi
+}
+
+# ------------------------------------------------------------
 # _start_timer <minutos>
 #   Cronómetro en background: al expirar marca el examen como
 #   'expired' en exam_status.yml (grade.sh lo bloqueará).
@@ -260,13 +310,7 @@ function _start_timer() {
     # Mata un cronómetro anterior si sigue vivo: solo puede
     # haber uno; ocurre si se arranca un segundo examen sin
     # pasar por down/grade entre medias.
-    if [ -f "$TIMER_PID_FILE" ]; then
-        # hijos primero (sleep del timer anterior), luego el padre:
-        # el kill del padre deja el sleep como huerfano
-        pkill -P "$(cat "$TIMER_PID_FILE")" 2>/dev/null || true
-        kill "$(cat "$TIMER_PID_FILE")" 2>/dev/null
-        rm -f "$TIMER_PID_FILE"
-    fi
+    _stop_timer
 
     # Subshell en background: duerme todo el examen y, al
     # despertar, invierte status: running → expired. Si el
